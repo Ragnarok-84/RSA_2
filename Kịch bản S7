@@ -1,0 +1,38 @@
+"""
+scenarios/s7_key_substitution.py
+Kịch bản S7: Tấn công thay thế khóa công khai (Key Substitution / Man-in-the-Middle).
+Minh họa vai trò cốt lõi của Chứng chỉ số CA trong việc ngăn chặn hacker thay thế khóa công khai.
+"""
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+def run_scenario_s7():
+    print("\n=======================================================")
+    print("KỊCH BẢN S7: TẤN CÔNG THAY THẾ KHÓA CÔNG KHAI (KEY SUBSTITUTION)")
+    print("=======================================================")
+    
+    alice_real_pub = (65537, 3233)
+    eve_hacker_pub = (65537, 9999) # Khóa giả của hacker Eve
+    
+    print(f"[1] Alice công bố Public Key thật: {alice_real_pub}")
+    print(f"[2] Kẻ tấn công Eve chặn đường truyền và tráo đổi thành khóa của Eve: {eve_hacker_pub}")
+    
+    print("\n--- TRƯỜNG HỢP A: KHÔNG SỬ DỤNG CHỨNG CHỈ SỐ CA ---")
+    print(f"    Bob nhận được khóa: {eve_hacker_pub} (Lầm tưởng là của Alice).")
+    print("    [!] Thảm họa: Bob mã hóa thông điệp mật bằng khóa của Eve -> Eve đọc trộm thành công!")
+    
+    print("\n--- TRƯỜNG HỢP B: CÓ SỬ DỤNG CHỨNG CHỈ SỐ CA (PKI) ---")
+    print("    Alice gửi Chứng chỉ (Certificate) có chữ ký số của CA.")
+    print("    Eve sửa Public Key trong Certificate thành khóa của mình.")
+    
+    # Kiểm tra chữ ký CA trên chứng thư bị sửa đổi
+    ca_signature_valid = False 
+    print("    Bob xác thực chữ ký của CA trên Certificate...")
+    if not ca_signature_valid:
+        print("    [ALERT] Phát hiện chữ ký CA không khớp do Certificate bị thay đổi!")
+        print("    -> Bob lập tức ngắt kết nối. Tấn công Thay thế Khóa THẤT BẠI ✅")
+        return True
+
+if __name__ == "__main__":
+    run_scenario_s7()
