@@ -1,28 +1,28 @@
-# Tệp: test_s4.py
+#Tệp: test_s4.py
 import hmac_utils
 
 
 def test_S4_hmac_repudiation():
-    """Kịch bản S4: Đối chiếu HMAC - Chứng minh không có tính chống chối bỏ"""
+    "Kịch bản S4: Đối chiếu HMAC - Chứng minh không có tính chống chối bỏ"
     print("--- KỊCH BẢN S4: ĐỐI CHIẾU HMAC ---")
 
-    # 1. Khóa bí mật chung giữa Alice và Bob (cả 2 đều biết)
+    #1.Khóa bí mật chung giữa Alice và Bob (cả 2 đều biết)
     shared_secret_key = "secret_key_123"
 
-    # 2. Bob tự tạo một thông điệp giả mạo có lợi cho mình
+    #2.Bob tự tạo một thông điệp giả mạo có lợi cho mình
     fake_message = "Alice đồng ý đền bù cho Bob 1 tỷ đồng"
     print(f"Bob tự tạo thông điệp giả: '{fake_message}'")
 
-    # 3. Bob dùng khóa chung để tự tạo thẻ HMAC cho thông điệp giả này
-    # (Gọi hàm từ file hmac_utils.py, thứ tự tham số: khóa, thông điệp)
+    #3.Bob dùng khóa chung để tự tạo thẻ HMAC cho thông điệp giả này
+    #(Gọi hàm từ file hmac_utils.py, thứ tự tham số: khóa, thông điệp)
     fake_tag = hmac_utils.generate_hmac(shared_secret_key, fake_message)
     print("Bob tự sinh thẻ HMAC giả bằng khóa chung.")
 
-    # 4. Trọng tài/Hệ thống kiểm tra lại thông điệp và thẻ HMAC giả
-    # (thứ tự tham số: khóa, thông điệp, thẻ HMAC nhận được)
+    #4.Trọng tài/Hệ thống kiểm tra lại thông điệp và thẻ HMAC giả
+    #(thứ tự tham số: khóa, thông điệp, thẻ HMAC nhận được)
     is_valid = hmac_utils.verify_hmac(shared_secret_key, fake_message, fake_tag)
 
-    # 5. Kết quả kỳ vọng
+    # 5.Kết quả kỳ vọng
     if is_valid:
         print("-> ĐÚNG KỲ VỌNG S4: Thẻ giả VẪN HỢP LỆ! Trọng tài không thể biết thẻ do Alice gửi hay Bob tự tạo. Suy ra HMAC KHÔNG có tính chống chối bỏ.\n")
     else:
