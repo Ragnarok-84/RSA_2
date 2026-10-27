@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+# Tệp sinh ra khi chạy demo (khóa riêng, chữ ký, bản mã)
+output/
+*.private.json
+*.sig.json
+*.enc.json
+.venv/
+venv/
