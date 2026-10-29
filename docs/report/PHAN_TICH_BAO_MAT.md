@@ -173,7 +173,7 @@ này không còn, vì chữ ký được đặt vào bên trong dữ liệu mã 
 * `python -m unittest discover -s tests`: 82 ca kiểm thử, gồm cả ca nhóm tự viết và ca đối chiếu chuẩn. Tất cả đều đạt.
   Khi chưa cài `cryptography` thì 3 ca đối chiếu với thư viện được bỏ qua.
 * `python tests/cross_check.py`: 29/29 khớp. Trong đó có test vector NIST cho SHA-256, RFC 4231 cho HMAC,
-  PBKDF2 so với `hashlib`, **chữ ký PKCS#1 v1.5 trùng từng bit với `cryptography`**, còn chữ ký PSS và OAEP
+  PBKDF2 so với `hashlib`, **chữ ký PKCS#1 v1.5 trùng từng bit với `cryptography`**, còn OAEP
   tương thích hai chiều.
 * `python demo/benchmark.py`: kết quả đo trên máy của nhóm, Python 3.12:
 
@@ -191,8 +191,8 @@ dài khoảng bằng N.
    điện năng). Thư viện thực tế dùng kỹ thuật làm mù (blinding) cho phép tính với d.
 2. Chưa dùng định lý số dư Trung Hoa (CRT) khi ký. Dùng CRT sẽ nhanh hơn khoảng 4 lần, nhưng phải phòng
    tấn công lỗi (Boneh–DeMillo–Lipton) bằng cách kiểm tra lại chữ ký trước khi gửi.
-3. Đã cài RSASSA-PSS (đệm ngẫu nhiên, có chứng minh an toàn chặt) nhưng mặc định vẫn dùng PKCS#1 v1.5 để
-   chữ ký đối chiếu được từng bit. Dòng khoá tự cài nên thay bằng AES-GCM.
+3. Chưa cài RSASSA-PSS (đệm ngẫu nhiên, có chứng minh an toàn chặt); nhóm chọn PKCS#1 v1.5 vì tất định nên
+   chữ ký đối chiếu được từng bit với thư viện chuẩn. Dòng khoá tự cài nên thay bằng AES-GCM.
 4. PKI mới ở mức mô phỏng: chưa có chuỗi CA trung gian và chưa có OCSP. Bản đối chiếu dùng chứng thư
    X.509 thật nằm ở `tests/cross_check_x509.py`.
 

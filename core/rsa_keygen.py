@@ -45,18 +45,17 @@ def keypair_from_primes(p: int, q: int, e: int, logger: StepLogger | None = None
     n = p * q
     phi = (p - 1) * (q - 1)
     if logger is not None:
-        logger.log("Tính modulus", f"n = p*q", f"n = {p}*{q} = {n}")
-        logger.log("Tính phi hàm Euler", f"phi(n) = (p - 1)*(q - 1)", f"phi(n) = {p - 1}*{q - 1} = {phi}")
+        logger.log("Tính modulus", f"n = p*q = {p}*{q} = {n}")
+        logger.log("Tính phi hàm Euler", f"phi(n) = (p - 1)*(q - 1) = {p - 1}*{q - 1} = {phi}")
     g = gcd(e, phi)
     if logger is not None:
-        logger.log("Kiểm tra e", f"gcd(e, phi(n)) = gcd({e}, {phi}) = {g}",
-                   "= 1, hợp lệ" if g == 1 else "khác 1, không chọn được e này", level="" if g == 1 else "bad")
+        logger.log("Kiểm tra e", f"gcd(e, phi(n)) = gcd({e}, {phi}) = {g}{', hợp lệ' if g == 1 else ' khác 1, không chọn được e này'}", level="" if g == 1 else "bad")
     if not 1 < e < phi or g != 1:
         raise ValueError(f"e = {e} không hợp lệ: cần 1 < e < phi(n) = {phi} và gcd(e, phi(n)) = 1")
     d = mod_inverse(e, phi, logger)
     if logger is not None:
-        logger.log("Khoá riêng", f"d = e^(-1) mod phi(n)", f"d = {d}   (e*d mod phi(n) = {(e * d) % phi})")
-        logger.ok("Cặp khoá", f"Khoá công khai (n, e) = ({n}, {e})\nKhoá riêng d = {d}")
+        logger.log("Tính d", f"d = e^(-1) mod phi(n) = {e}^(-1) mod {phi} = {d} (e*d mod phi(n) = {(e * d) % phi})")
+        logger.ok("Cặp khoá", f"Khoá công khai (e, n) = ({e}, {n})\nKhoá bí mật (d, p, q) = ({d}, {p}, {q})")
     return RSAPublicKey(n, e), RSAPrivateKey(n, e, d, p, q)
 
 

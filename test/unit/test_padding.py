@@ -4,7 +4,8 @@ import os
 import pytest
 
 from core.hash.sha256 import H0, _compress, big_sigma0, ch, compress_reference, maj, pad, rotr
-from core.padding import pkcs1_v15, pss
+from core.padding import pkcs1_v15
+from core.padding.mgf1 import mgf1
 
 
 def test_sha256_helpers():
@@ -62,22 +63,5 @@ def _mgf1_ref(seed: bytes, n: int) -> bytes:
 @pytest.mark.parametrize("n", [0, 1, 32, 33, 223])
 def test_mgf1(n):
     seed = os.urandom(32)
-    assert pss.mgf1(seed, n) == _mgf1_ref(seed, n)
+    assert mgf1(seed, n) == _mgf1_ref(seed, n)
 
-
-@pytest.mark.parametrize("em_bits", [1023, 1024, 2047])
-def test_pss_roundtrip(em_bits):
-    h = hashlib.sha256(b"pss").digest()
-    salt = bytes(range(32))
-    em = pss.encode(h, em_bits, salt=salt)
-    assert em == pss.encode(h, em_bits, salt=salt)                 # salt cố định → tất định
-    assert em[-1] == 0xBC and pss.verify(h, em, em_bits)
-    assert not pss.verify(hashlib.sha256(b"khac").digest(), em, em_bits)
-    bad = bytearray(em)
-    bad[5] ^= 1
-    assert not pss.verify(h, bytes(bad), em_bits)
-
-
-def test_pss_random_salt_differs():
-    h = hashlib.sha256(b"a").digest()
-    assert pss.encode(h, 2047) != pss.encode(h, 2047)

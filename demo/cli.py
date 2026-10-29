@@ -242,7 +242,7 @@ def menu() -> None:
             elif choice == "3":
                 cmd_sign(Path(_ask("Tệp khoá riêng", str(SAMPLE / "keys" / "trang_sign.json"))),
                          Path(_ask("Tệp cần ký", str(SAMPLE / "messages" / "contract.txt"))), None,
-                         _ask("Lược đồ (pkcs1v15/pss)", "pkcs1v15"), None, None)
+                         "textbook", None, None)
             elif choice == "4":
                 f = Path(_ask("Tệp cần kiểm tra", str(SAMPLE / "messages" / "contract.txt")))
                 cmd_verify(f, Path(_ask("Tệp chữ ký", str(f) + ".sig.json")), None, None)
@@ -288,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--key", type=Path, required=True)
     s.add_argument("--in", dest="infile", type=Path, required=True)
     s.add_argument("--out", type=Path)
-    s.add_argument("--scheme", choices=SCHEMES, default="pkcs1v15")
+    s.add_argument("--scheme", choices=SCHEMES, default="textbook")
     s.add_argument("--cert", type=Path, help="chứng chỉ người ký (.cert.json) gắn vào chữ ký")
     s.add_argument("--tsa-key", type=Path, help="khoá TSA để đóng dấu thời gian")
     v = sub.add_parser("verify", help="kiểm tra chữ ký tệp")

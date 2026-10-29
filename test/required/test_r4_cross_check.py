@@ -2,7 +2,6 @@
 
 - PKCS#1 v1.5: dùng cùng khóa do `cryptography` sinh để ký bằng cả hai cài đặt → chữ ký giống hệt từng byte;
   mỗi cài đặt kiểm tra được chữ ký của bên kia.
-- PSS (salt 32, MGF1-SHA256): kiểm tra chéo hai chiều.
 - Vector PKCS#1 v1.5 lưu sẵn (test/vectors/rsa_pkcs1_rfc8017.json) và DigestInfo theo RFC 8017.
 Bảng đầy đủ: python -m test.report (hoặc tab "Kiểm thử" trên GUI).
 """

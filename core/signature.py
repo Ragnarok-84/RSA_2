@@ -5,16 +5,16 @@ from pathlib import Path
 from typing import Callable, Literal
 
 from core.hash.sha256 import sha256, sha256_file
-from core.padding import pkcs1_v15, pss
+from core.padding import pkcs1_v15
 from core.rsa_keygen import RSAPrivateKey, RSAPublicKey
 from core.rsa_primitives import rsasp1, rsavp1
 from core.step_logger import StepLogger
 from core.utils import byte_len, constant_time_eq, from_hex, i2osp, os2ip, short_hex
 
-Scheme = Literal["pkcs1v15", "pss"]
-SCHEMES: tuple[str, ...] = ("pkcs1v15", "pss")
-SCHEME_LABELS = {"pkcs1v15": "PKCS1v15", "pss": "PSS"}
-PSS_SALT_LEN = 32
+# textbook: ký thẳng giá trị băm theo slide, y = h(x)^a mod n; pkcs1v15: đệm EM theo RFC 8017 rồi mới lũy thừa
+Scheme = Literal["textbook", "pkcs1v15"]
+SCHEMES: tuple[str, ...] = ("textbook", "pkcs1v15")
+SCHEME_LABELS = {"textbook": "Textbook", "pkcs1v15": "PKCS1v15"}
 
 
 class SignatureError(Exception):
@@ -69,7 +69,7 @@ class SignatureBundle:
     def from_dict(cls, d: dict) -> "SignatureBundle":
         if d.get("algorithm", "RSA") != "RSA" or d.get("hash", "SHA-256") != "SHA-256":
             raise ValueError("Chỉ hỗ trợ RSA + SHA-256")
-        scheme = {"PKCS1v15": "pkcs1v15", "PSS": "pss"}.get(d["scheme"], d["scheme"])
+        scheme = {label: key for key, label in SCHEME_LABELS.items()}.get(d["scheme"], d["scheme"])
         if scheme not in SCHEMES:
             raise ValueError(f"Lược đồ không hỗ trợ: {d['scheme']}")
         known = {"version", "algorithm", "scheme", "hash", "message_file", "message_hash_hex", "signature_hex",
@@ -85,41 +85,44 @@ def _check_scheme(scheme: str) -> None:
         raise SignatureError(f"scheme phải thuộc {SCHEMES}")
 
 
-def _encode(message_hash: bytes, n: int, scheme: str, salt: bytes | None) -> bytes:
+def _encode(message_hash: bytes, n: int, scheme: str) -> bytes:
+    if scheme == "textbook":
+        # h(x) phải nhỏ hơn n thì y^b mod n mới khôi phục đúng h(x)
+        if os2ip(message_hash) >= n:
+            raise SignatureError("Khoá quá ngắn: cần n > h(x) (n dài hơn 256 bít)")
+        return message_hash
     try:
-        if scheme == "pkcs1v15":
-            return pkcs1_v15.encode(message_hash, byte_len(n))
-        return pss.encode(message_hash, n.bit_length() - 1, PSS_SALT_LEN, salt)
+        return pkcs1_v15.encode(message_hash, byte_len(n))
     except ValueError as err:
         raise SignatureError(str(err)) from err
 
 
 def sign_hash(message_hash: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v15", *,
-              salt: bytes | None = None, logger: StepLogger | None = None) -> bytes:
+              logger: StepLogger | None = None) -> bytes:
     """Ký trên giá trị băm SHA-256 có sẵn (dùng khi băm tệp lớn theo khối). Trả S dài đúng k byte."""
     _check_scheme(scheme)
     k = byte_len(priv.n)
-    em = _encode(message_hash, priv.n, scheme, salt)
+    em = _encode(message_hash, priv.n, scheme)
     m = os2ip(em)
     s = rsasp1(priv, m)
     sig = i2osp(s, k)
     if logger is not None:
-        if scheme == "pkcs1v15":
-            logger.log("Mã hoá EM (PKCS#1 v1.5)", r"EM = 00 \| 01 \| PS \| 00 \| DigestInfo \| h", em.hex())
+        if scheme == "textbook":
+            logger.log("Số đưa vào lũy thừa (theo slide)", "m = OS2IP(h(x))", em.hex())
         else:
-            logger.log("Mã hoá EM (PSS, salt ngẫu nhiên)", r"EM = maskedDB \| H \| \mathrm{BC}", em.hex())
-        logger.log("Số đại diện", r"m = \mathrm{OS2IP}(EM)", short_hex(m))
-        logger.log("Ký", r"s = m^{d} \mathrm{mod}\ n", short_hex(s))
-        logger.ok(f"Chữ ký S ({k} byte)", sig.hex())
+            logger.log("Mã hoá EM (PKCS#1 v1.5)", "EM = 00 | 01 | PS | 00 | DigestInfo | h(x)", em.hex())
+            logger.log("Số đại diện", f"m = OS2IP(EM)", short_hex(m))
+        logger.log("Ký", f"y = m^a mod n", short_hex(s))
+        logger.ok(f"Chữ ký y ({k} byte)", sig.hex())
     return sig
 
 
 def sign(message: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v15", *,
          logger: StepLogger | None = None) -> bytes:
-    """Ký thông điệp: S = RSASP1(d, OS2IP(Encode(SHA256(M), k)))."""
+    """Ký thông điệp: y = RSASP1(a, OS2IP(Encode(SHA256(x)))); textbook bỏ bước Encode."""
     h = sha256(message)
     if logger is not None:
-        logger.log("Băm thông điệp", r"h = \mathrm{SHA256}(M)", h.hex())
+        logger.log("Băm thông điệp", "h(x) = SHA-256(x)", h.hex())
     return sign_hash(h, priv, scheme, logger=logger)
 
 
@@ -134,27 +137,26 @@ def verify_hash(message_hash: bytes, signature: bytes, pub: RSAPublicKey, scheme
     if s >= pub.n:
         return VerifyResult(False, "chữ ký nằm ngoài [0, n)", message_hash)
     m = rsavp1(pub, s)
-    if scheme == "pkcs1v15":
-        em = i2osp(m, k)
+    em = i2osp(m, k)
+    if scheme == "textbook":
         if logger is not None:
-            logger.log("Khôi phục EM", r"EM' = \mathrm{I2OSP}(s^{e} \mathrm{mod}\ n, k)", em.hex())
+            logger.log("Tính y^b mod n", "m' = y^b mod n", short_hex(m))
+        if m == os2ip(message_hash):
+            result = VerifyResult(True, "hợp lệ: y^b mod n = h(x)", message_hash, em)
+        else:
+            result = VerifyResult(False, "y^b mod n ≠ h(x) (thông điệp bị sửa, sai khoá hoặc chữ ký bị sửa)",
+                                  message_hash, em)
+    else:
+        if logger is not None:
+            logger.log("Khôi phục EM", "EM' = I2OSP(y^b mod n, k)", em.hex())
         if pkcs1_v15.verify_strict(em, message_hash):
             result = VerifyResult(True, "hợp lệ: EM' khớp toàn bộ Encode(SHA256(M))", message_hash, em)
         elif len(em) > 32 and pkcs1_v15.verify_strict(em, em[-32:]):
             result = VerifyResult(False, "hash không khớp (thông điệp bị sửa hoặc ký cho thông điệp khác)",
                                   message_hash, em)
         else:
-            result = VerifyResult(False, "EM' sai cấu trúc (sai khoá công khai hoặc chữ ký bị sửa)", message_hash, em)
-    else:
-        em_bits = pub.n.bit_length() - 1
-        if m.bit_length() > em_bits:
-            return VerifyResult(False, "EM' dài hơn emBits (sai khoá hoặc chữ ký bị sửa)", message_hash)
-        em = i2osp(m, (em_bits + 7) // 8)
-        if logger is not None:
-            logger.log("Khôi phục EM (PSS)", r"EM' = \mathrm{I2OSP}(s^{e} \mathrm{mod}\ n, emLen)", em.hex())
-        ok = pss.verify(message_hash, em, em_bits, PSS_SALT_LEN)
-        result = VerifyResult(ok, "hợp lệ: EMSA-PSS-VERIFY nhất quán" if ok else
-                              "EMSA-PSS-VERIFY thất bại (hash không khớp, sai khoá hoặc chữ ký bị sửa)", message_hash, em)
+            result = VerifyResult(False, "EM' sai cấu trúc (sai khoá công khai hoặc chữ ký bị sửa)",
+                                  message_hash, em)
     if logger is not None:
         (logger.ok if result.valid else logger.bad)("Kết luận", result.reason)
     return result
@@ -164,7 +166,7 @@ def verify_detailed(message: bytes, signature: bytes, pub: RSAPublicKey, scheme:
                     logger: StepLogger | None = None) -> VerifyResult:
     h = sha256(message)
     if logger is not None:
-        logger.log("Băm thông điệp nhận được", r"h = \mathrm{SHA256}(M)", h.hex())
+        logger.log("Băm thông điệp nhận được", "h(x) = SHA-256(x)", h.hex())
     return verify_hash(h, signature, pub, scheme, logger)
 
 

@@ -96,9 +96,9 @@ class OutputBox(QPlainTextEdit):
     @staticmethod
     def _tag_for(line: str) -> str | None:
         s = line.rstrip()
-        if s.startswith(("❌", "[LỖI]")) or "KHÔNG HỢP LỆ" in s:
+        if s.startswith("[LỖI]") or "KHÔNG HỢP LỆ" in s:
             return "bad"
-        if s.startswith("✅") or s.endswith("HỢP LỆ"):
+        if s.startswith("[HỢP LỆ]") or s.endswith("HỢP LỆ"):
             return "ok"
         if s.startswith(("===", "---", ">>>")):
             return "head"

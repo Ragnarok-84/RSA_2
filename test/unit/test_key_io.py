@@ -36,11 +36,11 @@ def test_broken_private_key(tmp_path, small_keypair):
 
 def test_signature_bundle_roundtrip(tmp_path, small_keypair):
     pub, priv = small_keypair
-    sig = sign(b"abc", priv, "pss")
-    b = SignatureBundle("pss", "abc.txt", "00" * 32, sig.hex(), {"subject": "trang"}, None)
+    sig = sign(b"abc", priv)
+    b = SignatureBundle("pkcs1v15", "abc.txt", "00" * 32, sig.hex(), {"subject": "trang"}, None)
     key_io.save_signature(b, tmp_path / "abc.sig.json")
     raw = json.loads((tmp_path / "abc.sig.json").read_bytes())
-    assert raw["scheme"] == "PSS" and raw["hash"] == "SHA-256" and raw["version"] == 1
+    assert raw["scheme"] == "PKCS1v15" and raw["hash"] == "SHA-256" and raw["version"] == 1
     back = key_io.load_signature(tmp_path / "abc.sig.json")
-    assert back.scheme == "pss" and back.signer_certificate == {"subject": "trang"}
+    assert back.scheme == "pkcs1v15" and back.signer_certificate == {"subject": "trang"}
     assert verify(b"abc", back.signature, pub, back.scheme)

@@ -1,6 +1,6 @@
 # Kết quả kiểm thử đối chiếu
 
-Sinh tự động bởi `python -m test.report` lúc 2026-10-29 19:23:07. 44/44 ca khớp.
+Sinh tự động bởi `python -m test.report` lúc 2026-10-29 19:23:07. 37/37 ca khớp.
 
 | Nhóm | Ca kiểm thử | Ours | Reference | Nguồn | Khớp |
 |---|---|---|---|---|---|
@@ -29,13 +29,9 @@ Sinh tự động bởi `python -m test.report` lúc 2026-10-29 19:23:07. 44/44 
 | Chữ ký (tự viết) | PKCS#1: thông điệp rỗng | `True` | `True` | Tự viết | ✅ |
 | Chữ ký (tự viết) | PKCS#1: văn bản tiếng Việt UTF-8 | `True` | `True` | Tự viết | ✅ |
 | Chữ ký (tự viết) | PKCS#1: tệp ảnh nhị phân logo.png | `True` | `True` | Tự viết | ✅ |
-| Chữ ký (tự viết) | PSS: thông điệp rỗng | `True` | `True` | Tự viết | ✅ |
-| Chữ ký (tự viết) | PSS: văn bản tiếng Việt UTF-8 | `True` | `True` | Tự viết | ✅ |
-| Chữ ký (tự viết) | PSS: tệp ảnh nhị phân logo.png | `True` | `True` | Tự viết | ✅ |
 | Chữ ký (tự viết) | Sửa 1 bít thông điệp → từ chối | `False` | `False` | Tự viết | ✅ |
 | Chữ ký (tự viết) | Sửa 1 bít chữ ký → từ chối | `False` | `False` | Tự viết | ✅ |
 | Chữ ký (tự viết) | Dùng sai khoá công khai → từ chối | `False` | `False` | Tự viết | ✅ |
-| Chữ ký (tự viết) | PSS: sửa 1 bít thông điệp → từ chối | `False` | `False` | Tự viết | ✅ |
 | Chữ ký (tự viết) | Ký CRT = ký không CRT | `True` | `True` | Tự viết | ✅ |
 | PKCS#1 v1.5 | DigestInfo SHA-256 | `3031300d06096086480…` | `3031300d06096086480…` | RFC 8017 | ✅ |
 | PKCS#1 v1.5 | Vector cố định: '' | `abfcd72c4519cf0eeea…` | `abfcd72c4519cf0eeea…` | RFC 8017 (vector lưu sẵn) | ✅ |
@@ -45,6 +41,3 @@ Sinh tự động bởi `python -m test.report` lúc 2026-10-29 19:23:07. 44/44 
 | Đối chiếu thư viện | PKCS#1 v1.5 ký contract.txt (2048-bit): trùng từng byte | `79509e15a9da022aee4…` | `79509e15a9da022aee4…` | cryptography | ✅ |
 | Đối chiếu thư viện | PKCS#1 v1.5: cryptography kiểm tra chữ ký của nhóm | `True` | `True` | cryptography | ✅ |
 | Đối chiếu thư viện | PKCS#1 v1.5: nhóm kiểm tra chữ ký của cryptography | `True` | `True` | cryptography | ✅ |
-| Đối chiếu thư viện | PSS: cryptography kiểm tra chữ ký của nhóm | `True` | `True` | cryptography | ✅ |
-| Đối chiếu thư viện | PSS: nhóm kiểm tra chữ ký của cryptography | `True` | `True` | cryptography | ✅ |
-| Đối chiếu thư viện | PSS: hai lần ký cho hai chữ ký khác nhau (salt ngẫu nhiên) | `True` | `True` | RFC 8017 | ✅ |

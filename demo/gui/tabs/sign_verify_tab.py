@@ -18,7 +18,8 @@ from demo.gui.widgets.hex_view import HexView
 from demo.gui.widgets.result_badge import ResultBadge
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
-SCHEMES = {"PKCS#1 v1.5": "pkcs1v15", "PSS": "pss"}
+# Mặc định theo slide: y = h(x)^a mod n; PKCS#1 v1.5 là lựa chọn chuẩn thực tế (đối chiếu từng byte với thư viện)
+SCHEMES = {"Mặc định": "textbook", "PKCS#1 v1.5": "pkcs1v15"}
 
 
 class SignVerifyTab(QWidget):
@@ -31,9 +32,9 @@ class SignVerifyTab(QWidget):
         self.bundle: SignatureBundle | None = None
         self.last_message: bytes | None = None
         self._last_file: Path | None = None
-        self._received_override: bytes | None = None       # thông điệp đã bị phuong lật bít
+        self._received_override: bytes | None = None       
         lay = QHBoxLayout(self)
-        left = QGroupBox("BÊN KÝ: Trang (Sender) - dùng khoá riêng")
+        left = QGroupBox("BÊN KÝ: Trang (Sender) - dùng khoá bí mật")
         ll = QVBoxLayout(left)
         self.bits = QComboBox()
         self.bits.addItems(("1024", "2048", "3072"))
@@ -54,9 +55,9 @@ class SignVerifyTab(QWidget):
         self.time_label = QLabel("")
         ll.addLayout(hbox(QLabel("Lược đồ:"), self.scheme, button("Ký", self.sign), self.time_label, None,
                           button("Lưu .sig.json…", self.save_sig)))
-        self.hash_view = HexView("[1] h = SHA-256(M)", 1)
-        self.em_view = HexView("[2] EM = Encode(h) — khối đệm đưa vào lũy thừa", 3)
-        self.sig_view = HexView("[3] Chữ ký S = EM^d mod n", 4)
+        self.hash_view = HexView("[1] h(x) = SHA-256(x)", 1)
+        self.em_view = HexView("[2] m đưa vào lũy thừa (Mặc định: m = h(x); PKCS#1: m = EM)", 3)
+        self.sig_view = HexView("[3] Chữ ký y = m^a mod n", 4)
         for w in (self.hash_view, self.em_view, self.sig_view):
             ll.addWidget(w)
         ll.addStretch(1)
@@ -70,8 +71,8 @@ class SignVerifyTab(QWidget):
         rl.addLayout(hbox(button("Dùng thông điệp + chữ ký vừa ký", self.use_last),
                           button("Mở .sig.json…", self.open_sig), None))
         rl.addWidget(self.sig_label)
-        rl.addLayout(hbox(button("Kiểm tra", self.verify), button("Phương (Attacker) lật 1 bít thông điệp", self.flip_message),
-                          button("Phương (Attacker) lật 1 bít chữ ký", self.flip_signature), None))
+        rl.addLayout(hbox(button("Kiểm tra", self.verify), button("Phương lật 1 bit thông điệp", self.flip_message),
+                          button("Phương lật 1 bit chữ ký", self.flip_signature), None))
         self.badge = ResultBadge()
         rl.addWidget(self.badge)
         self.detail = OutputBox()
@@ -82,8 +83,8 @@ class SignVerifyTab(QWidget):
         self._load_default_key()
     def _set_key(self, pub: RSAPublicKey, priv: RSAPrivateKey | None, origin: str) -> None:
         self.pub, self.priv = pub, priv
-        self.key_info.setText(f"{origin}: n {pub.n.bit_length()} bít, e = {pub.e}"
-                              + ("" if priv else " (chỉ khoá công khai — không ký được)"))
+        self.key_info.setText(f"{origin}: n {pub.n.bit_length()} bit, e = {pub.e}"
+                              + ("" if priv else " (chỉ khoá công khai - không ký được)"))
 
     def _load_default_key(self) -> None:
         path = SAMPLE / "keys" / "trang_sign.json"
@@ -97,7 +98,7 @@ class SignVerifyTab(QWidget):
     def generate(self) -> None:
         bits = int(self.bits.currentText())
         self.app.run(lambda: generate_keypair(bits), lambda kp: self._set_key(kp[0], kp[1], "Khoá vừa sinh"),
-                     status=f"Đang sinh khoá {bits} bít…", owner=self)
+                     status=f"Đang sinh khoá {bits} bit…", owner=self)
 
     def open_key(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Mở khoá (JSON)", str(SAMPLE / "keys"), "Khoá (*.json)")
@@ -157,7 +158,7 @@ class SignVerifyTab(QWidget):
             with Timer() as t:
                 h = sha256_file(file, progress) if file is not None else sha256(text)
                 sig = sign_hash(h, priv, scheme, logger=log)
-            em = next((s.value_str for s in log if s.title.startswith("Mã hoá EM")), "")
+            em = next((s.value_str for s in log if s.title.startswith(("Mã hoá EM", "Số đưa vào"))), "")
             return h, em, sig, t.elapsed
 
         def done(res) -> None:
@@ -170,7 +171,7 @@ class SignVerifyTab(QWidget):
             self.bundle = SignatureBundle(scheme, name, h.hex(), sig.hex())
             self.last_message = file.read_bytes() if file is not None and file.stat().st_size < (64 << 20) else text
             self._last_file = file
-            self.badge.set_info("Đã ký — bấm Kiểm tra ở bên phải")
+            self.badge.set_info("Đã ký - bấm Kiểm tra ở bên phải")
             self.detail.append(f"=== Trang ký {name} bằng {self.scheme.currentText()}, khoá {priv.n.bit_length()} bít ===\n")
             self.use_last()
 
@@ -257,7 +258,7 @@ class SignVerifyTab(QWidget):
         def job(progress):
             log = StepLogger()
             h = sha256_file(file, progress) if file is not None else sha256(text)
-            log.log("Băm thông điệp nhận được", r"h = \mathrm{SHA256}(M)", h.hex())
+            log.log("Băm thông điệp nhận được", "h(x) = SHA-256(x)", h.hex())
             res = verify_hash(h, from_hex(bundle.signature_hex), pub, bundle.scheme, log)
             return res, log
 

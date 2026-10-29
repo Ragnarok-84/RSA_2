@@ -27,10 +27,12 @@ def egcd(a: int, b: int, logger: StepLogger | None = None) -> tuple[int, int, in
         rows.append((q, r, x, y, a, b, x2, x1, y2, y1))
     d, x, y = a, x2, y2
     if logger is not None:
-        logger.table(f"Euclid mở rộng trên ({a0}, {b0})",
-                     ("q", "r", "x", "y", "a", "b", "x2", "x1", "y2", "y1"), rows,
-                     formula=r"q = \lfloor a / b \rfloor,\; r = a - q b,\; x = x_2 - q x_1,\; y = y_2 - q y_1")
-        logger.log("Kết quả Euclid mở rộng", f"{a0}*({x}) + {b0}*({y}) = {d}", f"(d, x, y) = ({d}, {x}, {y})")
+        logger.table(
+            f"Euclid mở rộng trên ({a0}, {b0})",
+            ("q", "r", "x", "y", "a", "b", "x2", "x1", "y2", "y1"), rows,
+            formula=f"q = floor(a / b), r = a - q*b, x = x2 - q*x1, y = y2 - q*y1\n"
+                    f"-> Kết quả: {a0}*({x}) + {b0}*({y}) = {d} => (d, x, y) = ({d}, {x}, {y})"
+        )
     return d, x, y
 
 
@@ -38,14 +40,32 @@ def mod_inverse(a: int, n: int, logger: StepLogger | None = None) -> int:
     # Nghịch đảo modulo
     if n <= 0:
         raise ValueError("Modulo phải dương")
-    d, _, y = egcd(n, a % n, logger)
+    d, _, y = egcd(n, a % n)
+    inv = y % n
+    if logger is not None and a % n:
+        conclusion = (f"r2 = 0 và r1 = 1 => {a}^(-1) mod {n} = {inv}" if d == 1
+                      else f"r2 = 0 nhưng r1 = {d} ≠ 1 => không tồn tại {a}^(-1) mod {n}")
+        logger.table(
+            f"Euclid mở rộng tìm nghịch đảo: {a}^(-1) mod {n}",
+            ("Dòng", "r0", "r1", "r2", "q", "t0", "t1"), _inverse_rows(a % n, n),
+            formula=f"r2 = r0 mod r1, q = floor(r0 / r1), t1 = (t0 - q*t1 của dòng trên) mod {n}\n"
+                    f"-> Kết quả: {conclusion}"
+        )
     if d != 1:
         raise ValueError(f"gcd({a}, {n}) = {d} ≠ 1: không tồn tại nghịch đảo modulo")
-    inv = y % n
-    if logger is not None:
-        logger.log("Nghịch đảo modulo", rf"{a}^{{-1}} \mathrm{{mod}}\ {n} = {y} \mathrm{{mod}}\ {n} = {inv}",
-                   f"Kiểm tra: {a}*{inv} mod {n} = {(a * inv) % n}")
     return inv
+
+
+def _inverse_rows(a: int, n: int) -> list[tuple[object, ...]]:
+    # Bảng 6 cột tính a^(-1) mod n như slide: dòng mới lấy r0, r1, t0 từ r1, r2, t1 của dòng trên
+    rows: list[tuple[object, ...]] = []
+    r0, r1, t0, t1 = n, a, 0, 1
+    while True:
+        q, r2 = divmod(r0, r1)
+        rows.append((len(rows), r0, r1, r2, q, t0, t1))
+        if r2 == 0:
+            return rows
+        r0, r1, t0, t1 = r1, r2, t1, (t0 - q * t1) % n
 
 
 def mod_pow(base: int, exp: int, mod: int, logger: StepLogger | None = None) -> int:
@@ -68,7 +88,7 @@ def mod_pow(base: int, exp: int, mod: int, logger: StepLogger | None = None) -> 
             rows.append((i, (exp >> i) & 1, c, f))
     if logger is not None:
         logger.table(f"Bình phương và nhân: {base}^{exp} mod {mod}", ("i", "b_i", "c", "f"), rows or [],
-                     formula=rf"{base}^{{{exp}}} \mathrm{{mod}}\ {mod} = {f}")
+                     formula=rf"{base}^{exp} mod {mod} = {f}")
     return f
 
 

@@ -21,23 +21,26 @@ from core.hash.sha256 import sha256
 from core.number_theory import crt, egcd, mod_inverse, mod_pow
 from core.padding import pkcs1_v15
 from core.rsa_keygen import RSAPrivateKey, RSAPublicKey, generate_keypair, keypair_from_primes
-from core.tiny_rsa import TinyRSA
+from core.encryption import seal, unseal
+from core.tiny_rsa import TinyRSA, decrypt_pair, encrypt_pair
 
 
 ROOT = Path(__file__).resolve().parents[1]
 VECTORS = Path(__file__).resolve().parent / "vectors"
 
 SIGNATURE_CASES = (
+    "Mặc định: thông điệp rỗng",
+    "Mặc định: văn bản tiếng Việt UTF-8",
+    "Mặc định: tệp ảnh nhị phân logo.png",
+    "Ký rồi mã hoá: giải mã z ra đúng x và chữ ký hợp lệ",
     "PKCS#1: thông điệp rỗng",
     "PKCS#1: văn bản tiếng Việt UTF-8",
     "PKCS#1: tệp ảnh nhị phân logo.png",
-    "PSS: thông điệp rỗng",
-    "PSS: văn bản tiếng Việt UTF-8",
-    "PSS: tệp ảnh nhị phân logo.png",
     "Sửa 1 bít thông điệp → từ chối",
     "Sửa 1 bít chữ ký → từ chối",
     "Dùng sai khoá công khai → từ chối",
-    "PSS: sửa 1 bít thông điệp → từ chối",
+    "Mặc định: sửa 1 bít thông điệp → từ chối",
+    "Ký rồi mã hoá: giải mã z bằng sai khoá → từ chối",
 )
 
 
@@ -77,6 +80,9 @@ def check_tiny_slide() -> list[CheckRow]:
     pub, priv = keypair_from_primes(17, 11, 7)
     tiny = TinyRSA(17, 11, 7)
     s = tiny.sign(88)
+    thuy = TinyRSA(23, 13, 5)
+    z = encrypt_pair(thuy, 88, s)
+    x2, y2 = decrypt_pair(thuy, z, as_bytes=False)
     return [
         _row(g, "egcd(4864, 3458)", egcd(4864, 3458), (38, 32, -45), src),
         _row(g, "mod_inverse(25, 101)", mod_inverse(25, 101), 97, src),
@@ -89,6 +95,8 @@ def check_tiny_slide() -> list[CheckRow]:
         _row(g, "keypair_from_primes(17, 11, 7): n, φ, d", (pub.n, (17 - 1) * (11 - 1), priv.d), (187, 160, 23), src),
         _row(g, "Tiny: ký h = 88 (p=17, q=11, e=7)", f"s = {s}", "s = 11", src),
         _row(g, "Tiny: kiểm tra 11^7 mod 187 = 88", tiny.verify(88, s), True, src),
+        _row(g, "Tiny: ký rồi mã hoá cho Thủy (23, 13, 5): z = e_B(88, 11)", z, [264, 189], "Tự tính tay"),
+        _row(g, "Tiny: Thủy giải mã z rồi kiểm tra", (x2, y2, tiny.verify(x2, y2)), (88, 11, True), "Tự tính tay"),
         _row(g, "mod_pow ngẫu nhiên 2048 bít vs pow()", *_pow_pair(), "Python pow"),
     ]
 
@@ -130,21 +138,42 @@ def check_signature_cases(pub: RSAPublicKey, priv: RSAPrivateKey,
     flipped_msg[0] ^= 0x01
     flipped_sig = bytearray(sig_vi)
     flipped_sig[len(flipped_sig) // 2] ^= 0x80
-    pss_vi = sg.sign(vi, priv, "pss")
+    tb_vi = sg.sign(vi, priv, "textbook")
+    thuy_pub, thuy_priv = shared_keypair(pub.n.bit_length(), slot=2)
+    envelope = seal(vi, sg.SignatureBundle("textbook", "vi.txt", sha256(vi).hex(), tb_vi.hex()), thuy_pub)
     results = [
+        sg.verify(b"", sg.sign(b"", priv, "textbook"), pub, "textbook"),
+        sg.verify(vi, tb_vi, pub, "textbook"),
+        sg.verify(img, sg.sign(img, priv, "textbook"), pub, "textbook"),
+        _seal_roundtrip(vi, priv, pub, thuy_pub, thuy_priv),
         sg.verify(b"", sg.sign(b"", priv), pub),
         sg.verify(vi, sig_vi, pub),
         sg.verify(img, sg.sign(img, priv), pub),
-        sg.verify(b"", sg.sign(b"", priv, "pss"), pub, "pss"),
-        sg.verify(vi, pss_vi, pub, "pss"),
-        sg.verify(img, sg.sign(img, priv, "pss"), pub, "pss"),
         sg.verify(bytes(flipped_msg), sig_vi, pub),
         sg.verify(vi, bytes(flipped_sig), pub),
         sg.verify(vi, sig_vi, wrong_pub),
-        sg.verify(bytes(flipped_msg), pss_vi, pub, "pss"),
+        sg.verify(bytes(flipped_msg), tb_vi, pub, "textbook"),
+        _unseal_ok(envelope, priv),                    # Trang không có d_B của Thủy
     ]
-    expected = [True] * 6 + [False] * 4
+    expected = [True] * 7 + [False] * 5
     return [_row(g, c, ok, exp, src) for c, ok, exp in zip(SIGNATURE_CASES, results, expected)]
+
+
+def _seal_roundtrip(message: bytes, priv: RSAPrivateKey, pub: RSAPublicKey, receiver_pub: RSAPublicKey,
+                    receiver_priv: RSAPrivateKey) -> bool:
+    # Trang ký bằng a_A, mã hoá bằng e_B; Thủy giải mã bằng d_B rồi kiểm tra bằng b_A
+    y = sg.sign(message, priv, "textbook")
+    z = seal(message, sg.SignatureBundle("textbook", "x.txt", sha256(message).hex(), y.hex()), receiver_pub)
+    x2, bundle = unseal(z, receiver_priv)
+    return x2 == message and sg.verify(x2, bundle.signature, pub, bundle.scheme)
+
+
+def _unseal_ok(envelope: dict, wrong_priv: RSAPrivateKey) -> bool:
+    try:
+        unseal(envelope, wrong_priv)
+        return True
+    except ValueError:
+        return False
 
 
 # ---- 4. RFC 8017 và thư viện cryptography ---------------------------------------------------------------
@@ -184,7 +213,6 @@ def check_cross_library(bits: int = 2048) -> list[CheckRow]:
     except ImportError:
         return [CheckRow(g, "Thư viện cryptography", "-", "chưa cài (pip install cryptography)", src, False)]
     key, reference_priv, reference_pub = _crypto_keypair(bits)
-    pss = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32)
 
     def lib_verifies(sig: bytes, msg: bytes, pad) -> bool:
         try:
@@ -198,18 +226,12 @@ def check_cross_library(bits: int = 2048) -> list[CheckRow]:
     bits = reference_pub.n.bit_length()
     ours = sg.sign(msg, reference_priv)
     theirs = key.sign(msg, padding.PKCS1v15(), hashes.SHA256())
-    ours_pss = sg.sign(msg, reference_priv, "pss")
-    theirs_pss = key.sign(msg, pss, hashes.SHA256())
     return [
         _row(g, f"SHA-256 contract.txt", sha256(msg).hex(), hashlib.sha256(msg).hexdigest(), "hashlib"),
         _row(g, f"PKCS#1 v1.5 ký contract.txt ({bits}-bit): trùng từng byte", ours.hex(), theirs.hex(), src),
         _row(g, "PKCS#1 v1.5: cryptography kiểm tra chữ ký của nhóm", lib_verifies(ours, msg, padding.PKCS1v15()),
              True, src),
         _row(g, "PKCS#1 v1.5: nhóm kiểm tra chữ ký của cryptography", sg.verify(msg, theirs, reference_pub), True, src),
-        _row(g, "PSS: cryptography kiểm tra chữ ký của nhóm", lib_verifies(ours_pss, msg, pss), True, src),
-        _row(g, "PSS: nhóm kiểm tra chữ ký của cryptography", sg.verify(msg, theirs_pss, reference_pub, "pss"), True, src),
-        _row(g, "PSS: hai lần ký cho hai chữ ký khác nhau (salt ngẫu nhiên)",
-             ours_pss != sg.sign(msg, reference_priv, "pss"), True, "RFC 8017"),
     ]
 
 

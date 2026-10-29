@@ -10,5 +10,5 @@ Theo quy định của môn học, nhóm ghi rõ việc sử dụng công cụ A
 ## Ghi chú cho nhóm
 
 * Mọi thành viên phải giải thích được toàn bộ mã nguồn khi bảo vệ, đặc biệt: SHA-256, Euclid mở rộng,
-  bình phương và nhân, EMSA-PKCS1-v1_5, EMSA-PSS, kiểm tra chuỗi chứng chỉ.
+  bình phương và nhân, EMSA-PKCS1-v1_5, kiểm tra chuỗi chứng chỉ.
 * Bổ sung phần việc cụ thể của từng thành viên vào bảng phân công trong `README.md`.

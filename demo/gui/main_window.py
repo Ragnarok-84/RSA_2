@@ -5,7 +5,7 @@ import time
 from typing import Callable
 
 from PySide6.QtCore import Qt, QThreadPool
-from PySide6.QtGui import QAction, QColor, QFont, QPainter, QPixmap
+from PySide6.QtGui import QColor, QFont, QPainter, QPixmap
 from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QProgressBar, QPushButton, QTabWidget,
                                QVBoxLayout, QWidget)
 
@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         from demo.gui.tabs.attacks_tab import AttacksTab
         from demo.gui.tabs.benchmark_tab import BenchmarkTab
         from demo.gui.tabs.pki_tab import PKITab
+        from demo.gui.tabs.sign_encrypt_tab import SignEncryptTab
         from demo.gui.tabs.sign_verify_tab import SignVerifyTab
         from demo.gui.tabs.test_tab import TestTab
         from demo.gui.tabs.tiny_tab import TinyTab
@@ -72,18 +73,21 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         self.tabs.tabBar().setDrawBase(False)
-        self.tabs.setUsesScrollButtons(False)         # đủ chỗ cho 6 tab ở 1100 px, không hiện mũi tên cuộn
+        self.tabs.setUsesScrollButtons(False)         # đủ chỗ cho 7 tab ở 1100 px, không hiện mũi tên cuộn
         self.tabs.setElideMode(Qt.TextElideMode.ElideRight)
         lay.addWidget(self.tabs, 1)
+        # Thứ tự theo đường đi của bức điện: ký -> ký rồi mã hoá -> tin khoá công khai (PKI) -> phân tích -> đo, kiểm thử
         self.tiny_tab = TinyTab(self)
         self.sign_tab = SignVerifyTab(self)
+        self.encrypt_tab = SignEncryptTab(self)
         self.pki_tab = PKITab(self)
         self.attacks_tab = AttacksTab(self)
         self.bench_tab = BenchmarkTab(self)
         self.test_tab = TestTab(self)
         for tab, name in ((self.tiny_tab, "1. Tiny RSA"), (self.sign_tab, "2. Ký & Kiểm tra"),
-                          (self.pki_tab, "3. PKI"), (self.attacks_tab, "4. Tấn công & Kịch bản"),
-                          (self.bench_tab, "5. Benchmark"), (self.test_tab, "6. Kiểm thử")):
+                          (self.encrypt_tab, "3. Ký rồi mã hoá"), (self.pki_tab, "4. PKI & Chống chối bỏ"),
+                          (self.attacks_tab, "5. Phân tích an toàn"), (self.bench_tab, "6. Hiệu năng"),
+                          (self.test_tab, "7. Kiểm thử")):
             self.tabs.addTab(tab, amp(name))
 
         self.status_label = QLabel("Sẵn sàng")
@@ -94,29 +98,7 @@ class MainWindow(QMainWindow):
         self.statusBar().addWidget(self.status_label, 1)
         self.statusBar().addPermanentWidget(self.progress)
         self.statusBar().setSizeGripEnabled(False)
-        self._build_menu()
 
-    def _build_menu(self) -> None:
-        m = self.menuBar().addMenu("&File")
-        for text, slot in (("Mở khoá…", self.sign_tab.open_key), ("Mở tệp…", self.sign_tab.open_file)):
-            act = QAction(text, self)
-            act.triggered.connect(lambda _=False, s=slot: (self.tabs.setCurrentWidget(self.sign_tab), s()))
-            m.addAction(act)
-        m.addSeparator()
-        quit_act = QAction("Thoát", self)
-        quit_act.triggered.connect(self.close)
-        m.addAction(quit_act)
-        h = self.menuBar().addMenu("&Help")
-        about = QAction("Giới thiệu đề tài", self)
-        about.triggered.connect(lambda: common.show_info(
-            self, "Giới thiệu đề tài",
-            "Hệ chữ ký điện tử RSA — ký trên giá trị băm của thông điệp, kiểm tra chữ ký, phân tích tính chứng thực "
-            "và tính không chối bỏ.\n\nMôn: An toàn và bảo mật thông tin (CNTT1168).\n"
-            "Lõi (SHA-256, RSA, PKCS#1 v1.5, PSS, PKI) tự cài đặt bằng thư viện chuẩn Python."))
-        members = QAction("Thành viên nhóm", self)
-        members.triggered.connect(lambda: common.show_info(self, "Thành viên nhóm 11", "\n".join(MEMBERS)))
-        h.addAction(about)
-        h.addAction(members)
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
 

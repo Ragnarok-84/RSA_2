@@ -11,11 +11,15 @@ from demo.gui.widgets.common import button, glass, hbox
 from demo.gui.widgets.result_badge import ResultBadge
 from demo.gui.widgets.step_view import StepView
 
-# Bảng ghép cặp kịch bản ↔ tấn công (thiết kế mục 3b)
-PAIRS = {
-    "s1_authentication": "a6", "s2_integrity_tamper": "a1, a2, a3, a4", "s3_non_repudiation_contract": "a7",
-    "s4_key_compromise": "a5", "s5_hmac_vs_signature": "—", "s6_sign_then_encrypt": "a8",
-}
+# Nhóm theo tính chất cần phân tích: mỗi nhóm có kịch bản dùng đúng và tấn công khi bỏ một thành phần
+GROUPS = (
+    ("CHỨNG THỰC - đúng người ký", ("s1_authentication",), ("a6_key_substitution_mitm", "a2_existential_forgery")),
+    ("TOÀN VẸN - nội dung không bị sửa", ("s2_integrity_tamper",), ("a1_no_hash_forgery", "a3_hash_collision")),
+    ("KHÔNG CHỐI BỎ - người ký không chối được",
+     ("s3_non_repudiation_contract", "s4_key_compromise", "s5_hmac_vs_signature"), ()),
+    ("BÍ MẬT - ký rồi mã hoá", ("s6_sign_then_encrypt",), ("a8_surreptitious_forwarding", "a7_replay_attack")),
+    ("BẢN THÂN RSA - tham số yếu", (), ("a4_small_e_attack", "a5_factorization")),
+)
 
 
 class AttacksTab(QWidget):
@@ -28,12 +32,13 @@ class AttacksTab(QWidget):
         left = QGroupBox("Danh sách")
         ll = QVBoxLayout(left)
         self.list = glass(QListWidget())
-        self._add_header("KỊCH BẢN - dùng đúng (kỳ vọng HỢP LỆ)")
-        for mod, title in scenarios.REGISTRY:
-            self._add_item(title, ("scenario", mod), f"Tấn công tương ứng: {PAIRS[mod]}")
-        self._add_header("TẤN CÔNG - bỏ một thành phần")
-        for mod, title in attacks.REGISTRY:
-            self._add_item(title, ("attack", mod), attacks.load(mod).__doc__ or "")
+        scenario_titles, attack_titles = dict(scenarios.REGISTRY), dict(attacks.REGISTRY)
+        for header, scenario_mods, attack_mods in GROUPS:
+            self._add_header(header)
+            for mod in scenario_mods:
+                self._add_item(f"  Đúng: {scenario_titles[mod]}", ("scenario", mod), "Kịch bản: kỳ vọng HỢP LỆ")
+            for mod in attack_mods:
+                self._add_item(f"  Tấn công: {attack_titles[mod]}", ("attack", mod), attacks.load(mod).__doc__ or "")
         self.list.itemDoubleClicked.connect(lambda _i: self.run_selected())
         self.list.currentItemChanged.connect(lambda *_: self._sync())
         ll.addWidget(self.list, 1)
@@ -53,7 +58,7 @@ class AttacksTab(QWidget):
         self.steps = StepView()
         rl.addWidget(self.steps, 1)
         split.addWidget(right)
-        split.setSizes([400, 700])
+        split.setSizes([480, 620])
         lay.addWidget(split, 1)
         self.list.setCurrentRow(1)
 

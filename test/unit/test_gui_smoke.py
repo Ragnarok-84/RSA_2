@@ -23,36 +23,45 @@ def _wait(qtbot, w, timeout=120_000):
     qtbot.waitUntil(lambda: not w.busy, timeout=timeout)
 
 
-def test_window_has_six_tabs(window):
-    assert window.tabs.count() == 6
+def test_window_has_seven_tabs(window):
+    assert window.tabs.count() == 7
     assert window.minimumWidth() >= 1100 and window.minimumHeight() >= 750
 
 
-def test_tiny_h88_shows_s11(window):
+def test_tiny_x88_shows_y11(window):
     tab = window.tiny_tab
-    tab.p.setValue(17)
-    tab.q.setValue(11)
-    tab.e.setValue(7)
-    tab.h.setValue(88)
+    tab.load_class_example()
     tab.sign()
-    assert tab.s.value() == 11
-    assert any("s = 11" in t for t in tab.steps.card_texts())
+    assert tab.y.value() == 11
+    assert any("y = 11" in t for t in tab.steps.card_texts())
     assert tab.euclid.rowCount() > 0 and tab.sm_sign.rowCount() == 5
     tab.verify()
     assert "HỢP LỆ" in tab.badge.text() and "KHÔNG" not in tab.badge.text()
 
 
-def test_tiny_step_by_step(window):
+def test_tiny_sign_then_encrypt(window):
     tab = window.tiny_tab
-    tab.p.setValue(17)
-    tab.q.setValue(11)
-    tab.e.setValue(7)
-    tab.h.setValue(88)
-    tab.sign(reveal_all=False)
-    assert tab.steps.shown == 0
-    tab.next_step()
-    tab.next_step()
-    assert tab.steps.shown == 2
+    tab.load_class_example()
+    tab.encrypt_flow.setChecked(True)
+    tab.sign()
+    tab.encrypt()
+    assert tab._z == [264, 189]
+    tab.decrypt_verify()
+    assert tab.badge.text() == "HỢP LỆ"
+    tab.tamper_z()
+    tab.decrypt_verify()
+    assert tab.badge.text() == "KHÔNG HỢP LỆ"
+
+
+def test_tiny_shows_all_steps(window):
+    tab = window.tiny_tab
+    tab.load_class_example()
+    assert tab.steps.shown > 0 and not tab.steps.has_next()
+    tab.sign()
+    assert tab.steps.shown > 0 and not tab.steps.has_next()
+    assert any("y = 11" in text for text in tab.steps.card_texts())
+    tab.verify()
+    assert tab.steps.shown > 0 and not tab.steps.has_next()
 
 
 def test_sign_verify_text_and_tamper(window, qtbot):
@@ -67,11 +76,11 @@ def test_sign_verify_text_and_tamper(window, qtbot):
     _wait(qtbot, window)
     tab.verify()
     _wait(qtbot, window)
-    assert tab.badge.text() == "✅ HỢP LỆ"
+    assert tab.badge.text() == "HỢP LỆ"
     tab.flip_message()
     tab.verify()
     _wait(qtbot, window)
-    assert tab.badge.text() == "❌ KHÔNG HỢP LỆ"
+    assert tab.badge.text() == "KHÔNG HỢP LỆ"
 
 
 def test_attack_tab_runs(window, qtbot):
@@ -93,4 +102,4 @@ def test_test_tab_all_green(window, qtbot):
     tab.start()
     _wait(qtbot, window, 300_000)
     assert tab.rows and all(r.match for r in tab.rows)
-    assert all(tab.table.item(i, 5).text() == "✅" for i in range(tab.table.rowCount()))
+    assert tab.table.rowCount() == len(tab.rows)

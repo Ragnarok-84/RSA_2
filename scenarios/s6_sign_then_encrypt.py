@@ -5,7 +5,7 @@ import secrets
 
 from core.hash.sha256 import sha256
 from core.number_theory import mod_pow
-from core.padding.pss import mgf1
+from core.padding.mgf1 import mgf1
 from core.rsa_keygen import RSAPrivateKey, RSAPublicKey, generate_keypair
 from core.signature import sign, verify_detailed
 from core.step_logger import StepLogger
