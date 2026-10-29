@@ -18,9 +18,4 @@ dist/
 *.spec
 
 # Báo cáo mới và các tệp hỗ trợ sinh báo cáo
-/docs/report/Bao_cao_RSA_moi.*
-/docs/report/Bao_cao_RSA_dua_tren_ma_nguon.md
-/docs/report/build_rsa_report.py
-/docs/report/collect_report_evidence.py
-/docs/report/evidence_rsa_report/
-/docs/report/~$*.docx
+/docs/
