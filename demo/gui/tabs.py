@@ -653,8 +653,8 @@ class ToolsTab(QWidget):
         lay = QVBoxLayout(self)
         lay.addLayout(hbox(button("Đối chiếu NIST / RFC / thư viện", self.cross_check),
                            button("Hiệu ứng thác lũ (lý do ký trên băm)", self.avalanche),
-                           button("Benchmark (nhanh)", self.benchmark),
-                           button("Chạy bộ test (tests/)", self.tests),
+                           button("Benchmark", self.benchmark),
+                           button("Chạy bộ test", self.tests),
                            None, button("Xóa", lambda: self.out.clear())))
         self.out = OutputBox()
         lay.addWidget(self.out, 1)
