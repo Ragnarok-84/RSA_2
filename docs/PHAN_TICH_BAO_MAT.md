@@ -16,7 +16,7 @@
 
 **Điểm mấu chốt: chữ ký số không đảm bảo tính bảo mật.**
 Khi kiểm tra chữ ký, bên nhận dùng khoá *công khai* của người ký. Ai cũng có khoá đó, nên ai cũng
-"mở" được chữ ký. Thông điệp lại được gửi kèm ở dạng rõ. Kịch bản S6-A cho thấy Eve đọc được toàn bộ
+"mở" được chữ ký. Thông điệp lại được gửi kèm ở dạng rõ. Kịch bản S6-A cho thấy Mai Phương đọc được toàn bộ
 nội dung **và** còn tự kiểm tra được chữ ký là hợp lệ.
 
 | | Chỉ ký | Chỉ mã hoá | Ký rồi mã hoá |
@@ -26,8 +26,8 @@ nội dung **và** còn tự kiểm tra được chữ ký là hợp lệ.
 | Chứng thực | Có | **Không** | Có |
 | Chống chối bỏ | Có | Không | Có |
 
-\* Mã hoá chỉ dùng khoá công khai của Bob, nên **bất kỳ ai** cũng tạo được một thư mã hoá hợp lệ gửi Bob
-(S6-D: Eve tạo thư giả nhân danh Alice). Mã hoá phát hiện được thư bị sửa, nhưng không chứng minh được
+\* Mã hoá chỉ dùng khoá công khai của Thu Thủy, nên **bất kỳ ai** cũng tạo được một thư mã hoá hợp lệ gửi Thu Thủy
+(S6-D: Mai Phương tạo thư giả nhân danh Thu Trang). Mã hoá phát hiện được thư bị sửa, nhưng không chứng minh được
 thư do ai viết.
 
 ---
@@ -39,10 +39,10 @@ chứng minh bằng chương trình (`attacks/forgery_no_padding.py`, `attacks/c
 
 | # | Điểm yếu | Tấn công | Kết quả demo | Cách khắc phục |
 |---|---|---|---|---|
-| 1 | **Tất định**: cùng M luôn cho cùng C | Từ điển: Eve mã hoá thử từng ứng viên bằng khoá công khai (menu 17) | Phiếu bầu "KHONG DONG Y" bị đoán ra chỉ sau 3 lần thử | Đệm ngẫu nhiên OAEP |
-| 2 | **Đồng cấu**: `C1·C2 = (M1·M2)^e` | Sửa bản mã có chủ đích, tạo chữ ký giả (menu 15) | Từ chữ ký của 2 và 50.000.000, Eve tạo được chữ ký cho 100.000.000 | Đệm (OAEP/PKCS#1) |
+| 1 | **Tất định**: cùng M luôn cho cùng C | Từ điển: Mai Phương mã hoá thử từng ứng viên bằng khoá công khai (menu 17) | Phiếu bầu "KHONG DONG Y" bị đoán ra chỉ sau 3 lần thử | Đệm ngẫu nhiên OAEP |
+| 2 | **Đồng cấu**: `C1·C2 = (M1·M2)^e` | Sửa bản mã có chủ đích, tạo chữ ký giả (menu 15) | Từ chữ ký của 2 và 50.000.000, Mai Phương tạo được chữ ký cho 100.000.000 | Đệm (OAEP/PKCS#1) |
 | 3 | **e nhỏ, cùng M gửi nhiều người** | Håstad: ghép bằng định lý số dư Trung Hoa rồi lấy căn bậc ba (menu 19) | Khôi phục bí mật 49 byte từ 3 bản mã, không cần khoá riêng nào | OAEP: mỗi bản rõ được đệm ngẫu nhiên khác nhau |
-| 4 | **Một khoá dùng cho cả ký lẫn giải mã** | "Làm mù" bản mã rồi nhờ chủ khoá ký (menu 20) | Chữ ký thô của Alice chính là bản giải mã của C' → Eve lấy được mã OTP | Tách khoá ký / khoá mã hoá (`key_usage`) |
+| 4 | **Một khoá dùng cho cả ký lẫn giải mã** | "Làm mù" bản mã rồi nhờ chủ khoá ký (menu 20) | Chữ ký thô của Thu Trang chính là bản giải mã của C' → Mai Phương lấy được mã OTP | Tách khoá ký / khoá mã hoá (`key_usage`) |
 
 ### 2.1. RSAES-OAEP (RFC 8017, mục 7.1): cài đặt trong `core/padding.py` (mã hoá khối) và `core/rsa_full.py`
 
@@ -62,7 +62,7 @@ EM = 00 ‖ maskedSeed ‖ maskedDB   →   C = EM^e mod N
   tiên tri ngẫu nhiên.
 * **Chống tấn công Manger (2001)**: mọi lỗi giải mã đều trả về **cùng một** ngoại lệ `DecryptionError`.
   Kẻ tấn công vì vậy không biết bước kiểm tra nào đã sai.
-* **Nhãn (label) = tên người nhận**: một khoá phiên bọc cho Bob không thể bị mang sang dùng với nhãn khác.
+* **Nhãn (label) = tên người nhận**: một khoá phiên bọc cho Thu Thủy không thể bị mang sang dùng với nhãn khác.
 * Giới hạn: một khối chỉ chứa được tối đa `k − 66` byte (190 byte với khoá 2048 bit). Vì vậy dữ liệu dài
   phải dùng **mã hoá lai** (mục 4).
 
@@ -75,10 +75,10 @@ bản mã do thư viện tạo được chương trình của nhóm giải đún
 
 | Cách làm | Gửi đi | Lỗ hổng | Demo |
 |---|---|---|---|
-| Ký song song mã hoá | `Enc_B(M) ‖ Sign_A(M)` | Chữ ký nằm ngoài, ở dạng rõ. Eve kiểm tra chữ ký với từng ứng viên M và đoán ra M | menu 18 |
-| Mã hoá rồi ký | `C = Enc_B(M)`, `Sign_A(C)` | Eve gỡ chữ ký của Alice rồi ký lại bằng khoá của Eve, khiến Bob tưởng thư của Eve. Trọng tài cũng không biết Alice đã ký nội dung gì | lý thuyết |
-| Ký rồi mã hoá **ngây thơ** | `Enc_B(M ‖ Sign_A(M))` | **Chuyển tiếp lén** (Davis, 2001): Bob giải mã rồi mã hoá lại gửi Charlie, và Charlie tưởng Alice viết cho mình | S6-E (Charlie bị lừa) |
-| **Ký rồi mã hoá có ghi người nhận** *(hệ thống dùng cách này)* | `Enc_B(meta ‖ Sign_A(meta) ‖ M)`, trong đó `meta = {from, to, SHA256(M), time}` | Không có lỗ hổng nào ở trên: tên người nhận được ký, nên Charlie phát hiện thư không gửi cho mình | S6-E (bị chặn) |
+| Ký song song mã hoá | `Enc_B(M) ‖ Sign_A(M)` | Chữ ký nằm ngoài, ở dạng rõ. Mai Phương kiểm tra chữ ký với từng ứng viên M và đoán ra M | menu 18 |
+| Mã hoá rồi ký | `C = Enc_B(M)`, `Sign_A(C)` | Mai Phương gỡ chữ ký của Thu Trang rồi ký lại bằng khoá của Mai Phương, khiến Thu Thủy tưởng thư của Mai Phương. Trọng tài cũng không biết Thu Trang đã ký nội dung gì | lý thuyết |
+| Ký rồi mã hoá **ngây thơ** | `Enc_B(M ‖ Sign_A(M))` | **Chuyển tiếp lén** (Davis, 2001): Thu Thủy giải mã rồi mã hoá lại gửi Tuyết Linh, và Tuyết Linh tưởng Thu Trang viết cho mình | S6-E (Tuyết Linh bị lừa) |
+| **Ký rồi mã hoá có ghi người nhận** *(hệ thống dùng cách này)* | `Enc_B(meta ‖ Sign_A(meta) ‖ M)`, trong đó `meta = {from, to, SHA256(M), time}` | Không có lỗ hổng nào ở trên: tên người nhận được ký, nên Tuyết Linh phát hiện thư không gửi cho mình | S6-E (bị chặn) |
 
 ---
 
@@ -89,25 +89,25 @@ Vì thế hệ thống làm giống TLS, PGP và S/MIME: **RSA chỉ dùng để
 bằng thuật toán đối xứng.
 
 ```
-Alice                                                       Bob
-1. meta = {from:Alice, to:Bob, sha256(M), time, filename}
+Thu Trang                                                       Thu Thủy
+1. meta = {from:Thu Trang, to:Thu Thủy, sha256(M), time, filename}
    S = Sign_dA(meta)                     (RSASSA-PKCS1-v1_5)
 2. inner = meta ‖ S ‖ M
 3. K ← 32 byte ngẫu nhiên; K_enc, K_mac = HMAC(K,"encryption"), HMAC(K,"authentication")
-   ct  = inner ⊕ SHA256(K_enc ‖ nonce ‖ i)…    ─────►  4. K = OAEP-Dec_dB(ek)      ← chỉ Bob làm được
+   ct  = inner ⊕ SHA256(K_enc ‖ nonce ‖ i)…    ─────►  4. K = OAEP-Dec_dB(ek)      ← chỉ Thu Thủy làm được
    tag = HMAC(K_mac, header ‖ nonce ‖ ct)      ─────►  5. kiểm tra tag            ← phát hiện sửa bản mã
-   ek  = OAEP-Enc_eB(K, label="Bob")           ─────►  6. giải mã ct → kiểm tra meta.to == Bob
+   ek  = OAEP-Enc_eB(K, label="Thu Thủy")           ─────►  6. giải mã ct → kiểm tra meta.to == Thu Thủy
                                                        7. Verify_eA(meta, S), SHA256(M) == meta.sha256
 ```
 
 * **Encrypt-then-MAC**: bản mã được kiểm tra HMAC *trước* khi giải mã, nên bản mã bị sửa bị loại ngay.
   Bộ test sửa từng trường `ct`, `tag`, `nonce`, `ek`, và cả bốn đều bị phát hiện.
-* **Giấu cả danh tính người gửi**: tên người gửi và chữ ký nằm bên trong bản mã. Eve chỉ thấy `to: Bob`.
+* **Giấu cả danh tính người gửi**: tên người gửi và chữ ký nằm bên trong bản mã. Mai Phương chỉ thấy `to: Thu Thủy`.
 * **Hạn chế cần nêu trong báo cáo**: dòng khoá SHA-256 ở chế độ đếm là cấu trúc tự cài phục vụ học tập,
   chưa được chuẩn hoá. Hệ thống thực tế nên dùng AES-256-GCM hoặc ChaCha20-Poly1305.
 
 **Demo trên dữ liệu thật** (menu 6): mã hoá ảnh `samples/anh_mau.png` (87.825 byte) mất khoảng 1,9 giây,
-giải mã khoảng 1,6 giây. Tệp khôi phục **giống hệt từng byte** tệp gốc, còn Eve dùng khoá của mình thì không
+giải mã khoảng 1,6 giây. Tệp khôi phục **giống hệt từng byte** tệp gốc, còn Mai Phương dùng khoá của mình thì không
 mở được khoá phiên.
 
 ---
@@ -146,24 +146,24 @@ mở được khoá phiên.
 
 ## 7. Ví dụ tính tay về tính bảo mật (khớp với `core/rsa_mini.py`, menu 1)
 
-**Khoá của Alice** (dùng để ký): p = 17, q = 11, e = 7.
+**Khoá của Thu Trang** (dùng để ký): p = 17, q = 11, e = 7.
 Từ đó N_A = 187, φ = 160, d_A = 23.
 
-**Khoá của Bob** (dùng để mã hoá): p = 23, q = 29, e = 3.
+**Khoá của Thu Thủy** (dùng để mã hoá): p = 23, q = 29, e = 3.
 Từ đó N_B = 667, φ = 616.
 Euclid mở rộng: 616 = 205·3 + 1, nên d_B = 616 − 205 = **411**. Kiểm tra: 3·411 = 1233 = 2·616 + 1.
 
 | Bước | Phép tính | Kết quả |
 |---|---|---|
-| Alice ký M = 88 | S = 88²³ mod 187 | **11** |
-| Alice mã hoá M | C1 = 88³ mod 667 | **465** |
-| Alice mã hoá S | C2 = 11³ mod 667 | **664** |
-| Bob giải mã | M = 465⁴¹¹ mod 667 | **88** |
-| Bob giải mã | S = 664⁴¹¹ mod 667 | **11** |
-| Bob kiểm tra chữ ký | 11⁷ mod 187 | **88 = M** (đúng) |
-| Eve tấn công từ điển | thử M' = 0…186, tính M'³ mod 667 | M' = 88 khớp C1, **lộ bản rõ** |
+| Thu Trang ký M = 88 | S = 88²³ mod 187 | **11** |
+| Thu Trang mã hoá M | C1 = 88³ mod 667 | **465** |
+| Thu Trang mã hoá S | C2 = 11³ mod 667 | **664** |
+| Thu Thủy giải mã | M = 465⁴¹¹ mod 667 | **88** |
+| Thu Thủy giải mã | S = 664⁴¹¹ mod 667 | **11** |
+| Thu Thủy kiểm tra chữ ký | 11⁷ mod 187 | **88 = M** (đúng) |
+| Mai Phương tấn công từ điển | thử M' = 0…186, tính M'³ mod 667 | M' = 88 khớp C1, **lộ bản rõ** |
 
-**Lưu ý:** phải có N_A < N_B thì S (luôn < N_A) mới mã hoá được bằng khoá của Bob. Ở bản đầy đủ, vấn đề
+**Lưu ý:** phải có N_A < N_B thì S (luôn < N_A) mới mã hoá được bằng khoá của Thu Thủy. Ở bản đầy đủ, vấn đề
 này không còn, vì chữ ký được đặt vào bên trong dữ liệu mã hoá đối xứng.
 
 ---

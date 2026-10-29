@@ -60,12 +60,12 @@ def attack_bleichenbacher_e3(public_key, target_hash_hex):
 def demo_bleichenbacher(keysize=2048, verbose=True):
     say = print if verbose else (lambda *a, **k: None)
     _, pub = generate_keypair(keysize=keysize, e=3)
-    msg = "Alice chuyển toàn bộ tài sản cho Eve"
-    say(f"[1] Khóa công khai của Alice dùng e = 3, N {keysize} bit. Eve muốn giả chữ ký cho:\n    '{msg}'")
+    msg = "Thu Trang chuyển toàn bộ tài sản cho Mai Phương"
+    say(f"[1] Khóa công khai của Thu Trang dùng e = 3, N {keysize} bit. Mai Phương muốn giả chữ ký cho:\n    '{msg}'")
     s = attack_bleichenbacher_e3(pub, hash_sha256(msg))
     lenient = lenient_verify(msg, s, pub)
     strict = verify_message(msg, s, pub)
-    say(f"[2] Eve tính căn bậc ba nguyên -> chữ ký giả S = {hex(s)[:30]}...")
+    say(f"[2] Mai Phương tính căn bậc ba nguyên -> chữ ký giả S = {hex(s)[:30]}...")
     say("[3] Bộ kiểm tra LỎNG LẺO : " + ("CHẤP NHẬN (bị lừa)" if lenient else "từ chối"))
     say("[4] core/padding.parse_em_strict (kiểm tra CHẶT toàn bộ EM): " + ("chấp nhận" if strict else "TỪ CHỐI"))
     say("[!] Phòng chống: kiểm tra đệm chặt từng byte; dùng e = 65537.")

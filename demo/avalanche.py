@@ -45,7 +45,7 @@ def run_demo(verbose=True, keysize=1024):
     say("=" * 66)
     say("1) HIỆU ỨNG THÁC LŨ CỦA SHA-256")
     say("=" * 66)
-    m1 = "Alice chuyển 100.000.000 VNĐ cho Bob".encode()
+    m1 = "Thu Trang chuyển 100.000.000 VNĐ cho Thu Thủy".encode()
     m2 = flip_bit(m1, 8 * m1.index(b"1") + 7)    # đổi bit thấp nhất của '1' (0x31) -> '0' (0x30)
     h1, h2 = sha256_bytes(m1), sha256_bytes(m2)
     d = bit_diff(h1, h2)
@@ -83,7 +83,7 @@ def run_demo(verbose=True, keysize=1024):
     say("\n" + "=" * 66)
     say("3) KÝ TỪNG KHỐI BỊ ĐỔI CHỖ KHỐI")
     say("=" * 66)
-    contract = [b"Ben A: Alice ", b"tra Bob ", b"100 trieu"]
+    contract = [s.encode() for s in ("Ben A: Thu Trang ", "tra Thu Thủy ", "100 trieu")]
     sigs = [mod_exp(bytes_to_int(b), d_, N) for b in contract]
     swapped = [contract[0], contract[2], contract[1]]
     swapped_sigs = [sigs[0], sigs[2], sigs[1]]

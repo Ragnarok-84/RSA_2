@@ -2,7 +2,7 @@
 # BẢN THU NHỎ (tính tay) của hệ chữ ký RSA, dùng bộ số trên lớp: p=17, q=11, e=7, M=88.
 #   Phần 1: Sinh khóa, mã hóa / giải mã, ký / kiểm tra trực tiếp trên M (RSA sách giáo khoa)
 #   Phần 2: Ký trên GIÁ TRỊ BĂM: h = SHA256(M) mod N  (thu nhỏ của ký-trên-băm thực tế)
-#   Phần 3: TÍNH BẢO MẬT — Alice ký rồi mã hóa gửi Bob (Bob: p=23, q=29, e=3)
+#   Phần 3: TÍNH BẢO MẬT — Thu Trang ký rồi mã hóa gửi Thu Thủy (Thu Thủy: p=23, q=29, e=3)
 # Mỗi phép lũy thừa đều in các bước của thuật toán bình phương và nhân để đối chiếu tính tay.
 import os as _os
 import sys as _sys
@@ -11,8 +11,8 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)
 from core.rsa_math import generate_keypair, explain_keygen, mod_exp
 from core.sha256 import hash_sha256
 
-P, Q, E, M = 17, 11, 7, 88                       # Alice (ví dụ trên lớp)
-BOB_P, BOB_Q, BOB_E = 23, 29, 3                  # Bob: N_B = 667 > N_A = 187
+P, Q, E, M = 17, 11, 7, 88                       # Thu Trang (ví dụ trên lớp)
+BOB_P, BOB_Q, BOB_E = 23, 29, 3                  # Thu Thủy: N_B = 667 > N_A = 187
 
 
 def encrypt(m, public_key):
@@ -113,40 +113,40 @@ def run_demo(verbose=True):
 
 
 def run_confidentiality_demo(alice_priv, alice_pub, say):
-    """Phần 3: Alice ký bằng d_A rồi mã hóa bằng e_B. Cần N_A < N_B để S < N_B."""
+    """Phần 3: Thu Trang ký bằng d_A rồi mã hóa bằng e_B. Cần N_A < N_B để S < N_B."""
     bob_priv, bob_pub = generate_keypair(p=BOB_P, q=BOB_Q, e=BOB_E)
     dA, NA = alice_priv
     dB, NB = bob_priv
     say("\n" + "=" * 60)
     say("PHẦN 3 — TÍNH BẢO MẬT: KÝ RỒI MÃ HÓA")
     say("=" * 60)
-    say("  Chữ ký chỉ chứng thực, KHÔNG che nội dung: Eve thấy (M, S) = "
+    say("  Chữ ký chỉ chứng thực, KHÔNG che nội dung: Mai Phương thấy (M, S) = "
         f"({M}, {sign(M, alice_priv)}) và đọc được M ngay.")
-    say(f"  Bob: p={BOB_P}, q={BOB_Q}, e={BOB_E}")
+    say(f"  Thu Thủy: p={BOB_P}, q={BOB_Q}, e={BOB_E}")
     for line in explain_keygen(BOB_P, BOB_Q, BOB_E):
         say("    " + line)
-    say(f"  Lưu ý: N_A = {NA} < N_B = {NB} nên S (< N_A) mã hóa được bằng khóa của Bob.")
+    say(f"  Lưu ý: N_A = {NA} < N_B = {NB} nên S (< N_A) mã hóa được bằng khóa của Thu Thủy.")
 
-    say("\n  [Alice] 1) Ký bằng khóa riêng của mình:")
+    say("\n  [Thu Trang] 1) Ký bằng khóa riêng của mình:")
     S = show_mod_exp(M, dA, NA, "S", say)
-    say("  [Alice] 2) Mã hóa M và S bằng khóa CÔNG KHAI của Bob:")
+    say("  [Thu Trang] 2) Mã hóa M và S bằng khóa CÔNG KHAI của Thu Thủy:")
     C1 = show_mod_exp(M, BOB_E, NB, "C1", say)
     C2 = show_mod_exp(S, BOB_E, NB, "C2", say)
-    say(f"  -> Gửi (C1, C2) = ({C1}, {C2}). Eve chỉ thấy hai số này.")
+    say(f"  -> Gửi (C1, C2) = ({C1}, {C2}). Mai Phương chỉ thấy hai số này.")
 
-    say("\n  [Bob] 3) Giải mã bằng khóa riêng của Bob:")
+    say("\n  [Thu Thủy] 3) Giải mã bằng khóa riêng của Thu Thủy:")
     M_b = show_mod_exp(C1, dB, NB, "M", say)
     S_b = show_mod_exp(C2, dB, NB, "S", say)
-    say("  [Bob] 4) Kiểm tra chữ ký bằng khóa công khai của Alice:")
+    say("  [Thu Thủy] 4) Kiểm tra chữ ký bằng khóa công khai của Thu Trang:")
     sig_ok = verify(M_b, S_b, alice_pub)
     say(f"     S^e_A mod N_A = {S_b}^{alice_pub[0]} mod {NA} = {mod_exp(S_b, alice_pub[0], NA)} "
-        + ("= M (đúng là Alice, nội dung nguyên vẹn)" if sig_ok else "≠ M"))
+        + ("= M (đúng là Thu Trang, nội dung nguyên vẹn)" if sig_ok else "≠ M"))
 
     # Tấn công từ điển vào RSA sách giáo khoa (tất định)
-    say(f"\n  [Eve] Không có d_B nên không giải mã trực tiếp được (phải phân tích N_B = {NB}).")
-    say("  [Eve] Nhưng RSA sách giáo khoa là TẤT ĐỊNH: Eve thử mọi M' < N_A, tính M'^e_B mod N_B:")
+    say(f"\n  [Mai Phương] Không có d_B nên không giải mã trực tiếp được (phải phân tích N_B = {NB}).")
+    say("  [Mai Phương] Nhưng RSA sách giáo khoa là TẤT ĐỊNH: Mai Phương thử mọi M' < N_A, tính M'^e_B mod N_B:")
     recovered = next(m for m in range(NA) if mod_exp(m, BOB_E, NB) == C1)
-    say(f"        tìm được M' = {recovered} khớp C1 -> Eve ĐỌC ĐƯỢC bản rõ")
+    say(f"        tìm được M' = {recovered} khớp C1 -> Mai Phương ĐỌC ĐƯỢC bản rõ")
     say("        => Thực tế phải dùng RSA-OAEP (thêm ngẫu nhiên) + khóa >= 2048 bit (xem kịch bản S6 - tính bảo mật).")
 
     return {"conf_S": S, "conf_C1": C1, "conf_C2": C2, "conf_M": M_b, "conf_sig_ok": sig_ok,

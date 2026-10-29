@@ -1,0 +1,5 @@
+# Thư viện TÙY CHỌN, chỉ để trang trí giao diện demo/gui.py.
+# Toàn bộ thuật toán (RSA, SHA-256, PKCS#1 v1.5 / PSS, chứng chỉ) tự cài đặt trong core/ và pki/,
+# không dùng thư viện ngoài. Không cài các gói dưới đây thì GUI vẫn chạy bằng Tkinter thuần.
+ttkbootstrap>=1.10
+Pillow>=10.0

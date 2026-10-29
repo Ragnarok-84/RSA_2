@@ -55,8 +55,8 @@ def run_benchmark(real=False):
         data = os.urandom(size)
         t_hash, _ = timeit(lambda: hash_sha256(data))
         t_sign, _ = timeit(lambda: rsa_full.sign_message(data, a_priv))
-        t_seal, env = timeit(lambda: sm.seal(data, "Alice", a_priv, "Bob", b_pub))
-        t_open, _ = timeit(lambda: sm.open_sealed(env, "Bob", b_priv, {"Alice": a_pub}.get))
+        t_seal, env = timeit(lambda: sm.seal(data, "Thu Trang", a_priv, "Thu Thủy", b_pub))
+        t_open, _ = timeit(lambda: sm.open_sealed(env, "Thu Thủy", b_priv, {"Thu Trang": a_pub}.get))
         label = f"{size // 1024} KB"
         print(f"{label:>10} | {t_hash:>8.3f}s | {t_sign:>11.3f}s | {t_seal:>13.3f}s | {t_open:>15.3f}s")
     print("   Nhận xét: phần RSA có chi phí cố định (1 phép lũy thừa) bất kể dữ liệu dài bao nhiêu;")

@@ -21,7 +21,7 @@ class TestArithmetic(unittest.TestCase):
 
     def test_mod_inverse_class_example(self):
         self.assertEqual(rm.mod_inverse(7, 160), 23)        # ví dụ trên lớp
-        self.assertEqual(rm.mod_inverse(3, 616), 411)       # khóa của Bob trong ví dụ bảo mật
+        self.assertEqual(rm.mod_inverse(3, 616), 411)       # khóa của Thu Thủy trong ví dụ bảo mật
         with self.assertRaises(ValueError):
             rm.mod_inverse(6, 9)
 

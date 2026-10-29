@@ -6,10 +6,15 @@ Giao diện chỉ gọi các module trong core/, pki/, scenarios/, attacks/, dem
 
     python demo/gui.py
 
+Thư viện trang trí (tùy chọn, CHỈ dùng cho giao diện — RSA, SHA-256, padding vẫn tự cài đặt trong core/):
+  - ttkbootstrap : theme cho nút, ô nhập, bảng, thanh cuộn
+  - Pillow       : đọc ảnh nền JPG và co giãn theo cửa sổ
+Không cài thì giao diện vẫn chạy bằng Tkinter thuần (pip install -r requirements-gui.txt để cài).
+
 Các tab:
-  1. Khóa              : sinh / lưu / nạp khóa của Alice (ký), Bob (mã hóa), Eve, Charlie
+  1. Khóa              : sinh / lưu / nạp khóa của Thu Trang (ký), Thu Thủy (mã hóa), Mai Phương, Tuyết Linh
   2. Ký & Kiểm tra     : ký văn bản hoặc tệp (PKCS#1 v1.5 / PSS), sửa nội dung hoặc chữ ký rồi kiểm tra
-  3. Bảo mật           : ký rồi mã hóa gửi Bob, các tình huống tấn công của Eve
+  3. Bảo mật           : ký rồi mã hóa gửi Thu Thủy, các tình huống tấn công của Mai Phương
   4. Tính tay          : RSA thu nhỏ với p, q, e, M tự nhập, in từng bước bình phương và nhân
   5. Kịch bản & Tấn công: chạy S1-S6 và các tấn công minh họa
   6. Kiểm thử          : đối chiếu chuẩn, benchmark, hiệu ứng thác lũ, bộ test
@@ -27,6 +32,15 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 from tkinter.scrolledtext import ScrolledText
 
+try:                                            # thư viện trang trí giao diện, không có thì dùng ttk thuần
+    import ttkbootstrap as tb
+except ImportError:
+    tb = None
+try:
+    from PIL import Image, ImageTk
+except ImportError:
+    Image = ImageTk = None
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT)
 
@@ -41,7 +55,9 @@ from scenarios.s4_replay import run_scenario_s4
 from scenarios.s5_key_substitution import run_scenario_s5
 from scenarios.s6_confidentiality import run_scenario_s6
 from scenarios.run_all import run_all
-from attacks import small_n, forgery_no_padding, bleichenbacher_e3, confidentiality
+from attacks import (small_n, forgery_no_padding, bleichenbacher_e3, hash_collision, weak_keys, crt_fault,
+                     confidentiality)
+from attacks.run_all import run_all as run_all_attacks
 from demo import avalanche, file_signer
 
 # Phông chữ theo hệ điều hành (macOS không có Consolas / Segoe UI)
@@ -53,9 +69,68 @@ else:
     MONO, UI = ("DejaVu Sans Mono", 10), "DejaVu Sans"
 UI_SIZE = 13 if sys.platform == "darwin" else 10
 GREEN, RED, BLUE, GREY = "#1b7f3b", "#c62828", "#1f4e9c", "#666666"
-PEOPLE = ("Alice", "Bob", "Eve", "Charlie")
-ROLES = {"Alice": "người ký", "Bob": "người nhận (mã hóa)", "Eve": "kẻ tấn công", "Charlie": "người thứ ba"}
-DEFAULT_TEXT = "Hợp đồng số 2026/HĐ-001: Alice đồng ý bán lô hàng A cho Bob, giá 100.000.000 VNĐ."
+PEOPLE = ("Thu Trang", "Thu Thủy", "Mai Phương", "Tuyết Linh")
+ROLES = {"Thu Trang": "Người ký", "Thu Thủy": "người nhận (mã hóa)", "Mai Phương": "kẻ tấn công", "Tuyết Linh": "người thứ ba"}
+DEFAULT_TEXT = ""
+
+# Màu giao diện: mỗi tab một nền nhạt và một màu nhấn đậm cho nút (chữ trắng trên nút đạt tương phản >= 4.5:1)
+WINDOW_BG, DARK = "#DDE5F5", "#2F3E66"
+BG_DIR = os.path.join(ROOT, "background")
+BG_JPG = os.path.join(BG_DIR, "background2.jpg")
+BG_PNG = os.path.join(BG_DIR, "background.png")     # bản PNG cho Tk thuần (Tk không đọc được JPG)
+BG_TOP = 64                                         # chừa chỗ cho viền ren trắng và tiêu đề phía trên
+TAB_COLORS = (("#EAF2FF", "#2F6FDE"),     # 1. Khóa: xanh dương
+              ("#EAF8EE", "#1B7A43"),     # 2. Ký & Kiểm tra: xanh lá
+              ("#FFF3E6", "#B85A10"),     # 3. Bảo mật: cam
+              ("#F3ECFF", "#7B4BD6"),     # 4. Tính tay: tím
+              ("#FFEEF3", "#C2305E"),     # 5. Kịch bản & Tấn công: hồng
+              ("#E8F8F8", "#0F7375"))     # 6. Kiểm thử: xanh ngọc
+
+
+def darker(hex_color, factor=0.82):
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+    return "#%02x%02x%02x" % (int(r * factor), int(g * factor), int(b * factor))
+
+
+def setup_styles(root):
+    """Theme 'clam' (theme mặc định của Windows/macOS bỏ qua màu nền) và các style dùng chung."""
+    if tb:
+        style = tb.Style(theme="cosmo")         # theme ttkbootstrap (dựng trên clam), các màu riêng bên dưới đè lên
+    else:
+        style = ttk.Style(root)
+        style.theme_use("clam")
+    root.configure(background=WINDOW_BG)
+    style.configure(".", font=(UI, UI_SIZE))
+    style.configure("TNotebook", background=WINDOW_BG, borderwidth=0)
+    style.configure("TNotebook.Tab", background="#C9D5EE", foreground=DARK, padding=(10, 5))
+    style.map("TNotebook.Tab", background=[("selected", DARK)], foreground=[("selected", "white")])
+    style.configure("Status.TFrame", background=DARK)
+    style.configure("Status.TLabel", background=DARK, foreground="white")
+    style.configure("Status.Horizontal.TProgressbar", background="#7FB2FF", troughcolor="#44547E")
+    for i, (bg, accent) in enumerate(TAB_COLORS, 1):
+        p = f"T{i}"
+        for cls in ("TFrame", "TLabel", "TRadiobutton", "TCheckbutton", "TPanedwindow"):
+            style.configure(f"{p}.{cls}", background=bg)
+        style.map(f"{p}.TRadiobutton", background=[("active", bg)])
+        style.map(f"{p}.TCheckbutton", background=[("active", bg)])
+        style.configure(f"{p}.TLabelframe", background=bg, bordercolor=accent)
+        style.configure(f"{p}.TLabelframe.Label", background=bg, foreground=accent, font=(UI, UI_SIZE, "bold"))
+        style.configure(f"{p}.TButton", background=accent, foreground="white", bordercolor=darker(accent),
+                        lightcolor=accent, darkcolor=accent, focuscolor=accent, width=-11, padding=(2, 0) if i == 5 else (4, 2))   # tab 5 có nhiều nút xếp dọc
+        style.map(f"{p}.TButton", background=[("disabled", "#B8BFCC"), ("pressed", darker(accent, 0.7)),
+                                               ("active", darker(accent))],
+                  foreground=[("disabled", "#F4F5F7")])
+
+
+def paint(widget, prefix, bg):
+    """Áp style của một tab cho toàn bộ widget con (ttk theo style, tk theo màu nền)."""
+    cls = widget.winfo_class()
+    if cls in ("TFrame", "TLabel", "TRadiobutton", "TCheckbutton", "TButton", "TLabelframe", "TPanedwindow"):
+        widget.configure(style=f"{prefix}.{cls}")
+    elif cls in ("Frame", "Label"):
+        widget.configure(background=bg)
+    for child in widget.winfo_children():
+        paint(child, prefix, bg)
 
 
 def short_int(x, head=28, tail=12):
@@ -147,38 +222,81 @@ def labeled_entry(parent, text, width=12, default=""):
 # Ứng dụng chính
 # ====================================================================== #
 class App(tk.Tk):
-    def __init__(self, autostart=True):
+    def __init__(self, autostart=False):
         super().__init__()
-        self.title("Hệ chữ ký điện tử RSA — Demo An toàn bảo mật thông tin")
-        self.geometry("1180x760")
+        self.title("HỆ CHỮ KÝ ĐIỆN TỬ RSA - DEMO NHÓM 11")
+        self.geometry("1180x820")               # cao hơn 60px để bù phần viền ảnh nền
         self.minsize(960, 640)
-        self.keys = {}                          # tên -> (khóa riêng, khóa công khai)
+        setup_styles(self)
+        self._setup_background()
+        self.keys = {}                      # tên -> (khóa riêng, khóa công khai)
         self._q = queue.Queue()
         self._busy = False
 
+        bar = ttk.Frame(self, style="Status.TFrame", padding=(8, 4))
+        bar.pack(side="bottom", fill="x")         # xếp trước để luôn hiện, kể cả khi nội dung tab cao
+        self.status = tk.StringVar(value="Sẵn sàng")
+        ttk.Label(bar, textvariable=self.status, style="Status.TLabel").pack(side="left")
+        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=180, style="Status.Horizontal.TProgressbar")
+        self.progress.pack(side="right")
+
         nb = ttk.Notebook(self)
-        nb.pack(fill="both", expand=True, padx=6, pady=(6, 0))
+        nb.pack(fill="both", expand=True, padx=20, pady=(BG_TOP, 8))
         self.key_tab = KeyTab(self, nb)
         self.sign_tab = SignTab(self, nb)
         self.conf_tab = ConfidentialityTab(self, nb)
         self.mini_tab = MiniTab(self, nb)
         self.scen_tab = ScenarioTab(self, nb)
         self.tool_tab = ToolsTab(self, nb)
-        for tab, name in ((self.key_tab, " 1. Khóa "), (self.sign_tab, " 2. Ký & Kiểm tra "),
-                          (self.conf_tab, " 3. Bảo mật (ký rồi mã hóa) "), (self.mini_tab, " 4. Tính tay "),
-                          (self.scen_tab, " 5. Kịch bản & Tấn công "), (self.tool_tab, " 6. Kiểm thử & Đánh giá ")):
+        tabs = ((self.key_tab, " 1. Khóa "), (self.sign_tab, " 2. Ký & Kiểm tra "),
+                (self.conf_tab, " 3. Bảo mật (ký rồi mã hóa) "), (self.mini_tab, " 4. Tính tay "),
+                (self.scen_tab, " 5. Kịch bản & Tấn công "), (self.tool_tab, " 6. Kiểm thử & Đánh giá "))
+        for i, ((tab, name), (bg, _)) in enumerate(zip(tabs, TAB_COLORS), 1):
             nb.add(tab, text=name)
-
-        bar = ttk.Frame(self)
-        bar.pack(fill="x", padx=6, pady=4)
-        self.status = tk.StringVar(value="Sẵn sàng")
-        ttk.Label(bar, textvariable=self.status).pack(side="left")
-        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=180)
-        self.progress.pack(side="right")
+            paint(tab, f"T{i}", bg)
 
         self.after(50, self._poll)
         if autostart:
             self.generate_keys(PEOPLE, 1024, initial=True)
+
+    # ---------- ảnh nền ----------
+    def _setup_background(self):
+        """Canvas nằm dưới cùng: ảnh nền lộ ra ở viền quanh các tab, tiêu đề vẽ ở giữa phía trên (nền chữ trong suốt).
+        Có Pillow thì đọc JPG và phóng theo cửa sổ."""
+        self._bg_src = self._bg_img = self._bg_job = None
+        try:
+            if Image:
+                self._bg_src = Image.open(BG_JPG if os.path.exists(BG_JPG) else BG_PNG).convert("RGB")
+                self._bg_img = ImageTk.PhotoImage(self._bg_src)
+            else:
+                self._bg_img = tk.PhotoImage(file=BG_PNG)
+        except (OSError, tk.TclError):
+            pass
+        self._bg = tk.Canvas(self, background=WINDOW_BG, highlightthickness=0, borderwidth=0)
+        self._bg.place(x=0, y=0, relwidth=1, relheight=1)
+        self._bg_item = self._bg.create_image(0, 0, anchor="nw", image=self._bg_img) if self._bg_img else None
+        self._title_item = self._bg.create_text(0, BG_TOP // 2 + 2, text=self.title(), fill=DARK,
+                                                font=(UI, UI_SIZE + 6, "bold"))
+        self.bind("<Configure>", self._on_resize, add="+")
+
+    def _on_resize(self, event):
+        if event.widget is self:                # sự kiện của cửa sổ chính, bỏ qua của widget con
+            self._bg.coords(self._title_item, event.width // 2, BG_TOP // 2 + 2)
+            if self._bg_src:
+                if self._bg_job:
+                    self.after_cancel(self._bg_job)
+                self._bg_job = self.after(120, self._fit_background)
+
+    def _fit_background(self):
+        """Chỉ phóng to khi cửa sổ lớn hơn ảnh (giữ viền ren trên cùng), còn lại cắt từ góc trên trái."""
+        self._bg_job = None
+        w, h = self.winfo_width(), self.winfo_height()
+        sw, sh = self._bg_src.size
+        scale = max(1.0, w / sw, h / sh)
+        img = self._bg_src if scale == 1.0 else self._bg_src.resize((round(sw * scale), round(sh * scale)),
+                                                                     Image.LANCZOS)
+        self._bg_img = ImageTk.PhotoImage(img.crop((0, 0, min(w, img.width), min(h, img.height))))
+        self._bg.itemconfigure(self._bg_item, image=self._bg_img)
 
     # ---------- chạy tác vụ nền ----------
     def run(self, fn, on_done=None, output=None, status="Đang xử lý..."):
@@ -274,9 +392,9 @@ class KeyTab(ttk.Frame):
         self.bits.pack(side="left", padx=(4, 12))
         ttk.Button(ctl, text="Sinh khóa ngẫu nhiên", command=self.gen_random).pack(side="left")
         ttk.Separator(ctl, orient="vertical").pack(side="left", fill="y", padx=12)
-        f, self.p = labeled_entry(ctl, "p", 8, "61"); f.pack(side="left")
-        f, self.q = labeled_entry(ctl, "q", 8, "53"); f.pack(side="left")
-        f, self.e = labeled_entry(ctl, "e", 8, "17"); f.pack(side="left")
+        f, self.p = labeled_entry(ctl, "p", 8); f.pack(side="left")
+        f, self.q = labeled_entry(ctl, "q", 8); f.pack(side="left")
+        f, self.e = labeled_entry(ctl, "e", 8); f.pack(side="left")
         ttk.Button(ctl, text="Sinh từ p, q, e", command=self.gen_manual).pack(side="left")
 
         io_ = ttk.Frame(self)
@@ -299,9 +417,6 @@ class KeyTab(ttk.Frame):
 
         self.out = OutputBox(self, height=16)
         self.out.pack(fill="both", expand=True, pady=(6, 0))
-        self.out.append("Khóa mặc định 1024 bit được sinh tự động khi khởi động. Chọn một dòng để xem chi tiết.\n"
-                        "Lưu ý: N nhỏ (tự nhập p, q) chỉ dùng được ở tab 4 — đệm PKCS#1/PSS/OAEP cần N >= 528-1024 bit.\n",
-                        "dim")
 
     def _targets(self):
         return PEOPLE if self.who.get() == "Tất cả" else (self.who.get(),)
@@ -310,6 +425,9 @@ class KeyTab(ttk.Frame):
         self.app.generate_keys(self._targets(), int(self.bits.get()))
 
     def gen_manual(self):
+        if not all(v.get().strip() for v in (self.p, self.q, self.e)):
+            messagebox.showwarning("Thiếu tham số", "Hãy nhập đủ p, q, e.")
+            return
         try:
             p, q, e = int(self.p.get()), int(self.q.get()), int(self.e.get())
             pair = generate_keypair(p=p, q=q, e=e)
@@ -356,7 +474,7 @@ class KeyTab(ttk.Frame):
             pw = simpledialog.askstring("Mật khẩu", "Đặt mật khẩu bảo vệ khóa riêng:", show="*", parent=self)
             if not pw:
                 return
-        usage = "encryption" if n == "Bob" else "signature"
+        usage = "encryption" if n == "Thu Thủy" else "signature"
         priv, pub = self.app.keys[n]
         paths = file_signer.save_keypair(n.lower(), priv, pub, folder, usage, pw)
         self.out.append(f"Đã lưu: {paths[0]}\n       {paths[1]}\n", "ok")
@@ -379,9 +497,9 @@ class KeyTab(ttk.Frame):
         except (ValueError, KeyError, OSError) as err:
             messagebox.showerror("Không nạp được khóa", str(err))
             return
-        n = self.who.get() if self.who.get() in PEOPLE else data.get("owner", "Alice").capitalize()
+        n = self.who.get() if self.who.get() in PEOPLE else data.get("owner", "Thu Trang").capitalize()
         if n not in PEOPLE:
-            n = "Alice"
+            n = "Thu Trang"
         self.app.keys[n] = (priv, pub)
         self.refresh()
         self.out.append(f"Đã nạp khóa từ {path} cho {n}\n", "ok")
@@ -401,7 +519,7 @@ class DataSource(ttk.Frame):
         self.mode = tk.StringVar(value="text")
         ttk.Radiobutton(top, text="Văn bản", variable=self.mode, value="text", command=self._mode).pack(side="left", padx=8)
         ttk.Radiobutton(top, text="Tệp", variable=self.mode, value="file", command=self._mode).pack(side="left")
-        self.path = tk.StringVar(value=file_signer.DEFAULT_SAMPLE)
+        self.path = tk.StringVar()
         self.path_entry = ttk.Entry(top, textvariable=self.path, width=60)
         self.browse_btn = ttk.Button(top, text="Chọn tệp...", command=self._browse)
         self.text = tk.Text(self, height=height, width=40, font=MONO, wrap="word")
@@ -425,11 +543,26 @@ class DataSource(ttk.Frame):
             self.path.set(p)
 
     def get(self):
-        """:return: (dữ liệu bytes, tên tệp hoặc None)"""
+        """:return: (dữ liệu bytes, tên tệp hoặc None). ValueError nếu chưa nhập gì, OSError nếu không đọc được tệp."""
         if self.mode.get() == "file":
+            if not self.path.get().strip():
+                raise ValueError("Hãy chọn tệp trước.")
             with open(self.path.get(), "rb") as f:
                 return f.read(), os.path.basename(self.path.get())
-        return self.text.get("1.0", "end-1c").encode("utf-8"), None
+        text = self.text.get("1.0", "end-1c")
+        if not text.strip():
+            raise ValueError("Hãy nhập thông điệp trước.")
+        return text.encode("utf-8"), None
+
+    def read(self):
+        """Như get() nhưng hiện thông báo thay vì ném lỗi. :return: (dữ liệu, tên) hoặc None"""
+        try:
+            return self.get()
+        except ValueError as err:
+            messagebox.showwarning("Thiếu dữ liệu", str(err))
+        except OSError as err:
+            messagebox.showerror("Không đọc được tệp", str(err))
+        return None
 
 
 # ====================================================================== #
@@ -441,7 +574,7 @@ class SignTab(ttk.Frame):
         self.app = app
         self.recv_data = None
 
-        left = ttk.LabelFrame(self, text="BÊN KÝ — Alice (dùng khóa riêng)", padding=8)
+        left = ttk.LabelFrame(self, text="BÊN KÝ — Thu Trang (dùng khóa riêng)", padding=8)
         left.pack(side="left", fill="both", expand=True)
         self.src = DataSource(left, "Thông điệp cần ký")
         self.src.pack(fill="x")
@@ -463,7 +596,7 @@ class SignTab(ttk.Frame):
         self.sig = tk.Text(left, height=5, width=40, font=MONO, wrap="char")
         self.sig.pack(fill="both", expand=True)
 
-        right = ttk.LabelFrame(self, text="BÊN NHẬN — Bob (dùng khóa công khai của Alice)", padding=8)
+        right = ttk.LabelFrame(self, text="BÊN NHẬN — Thu Thủy (dùng khóa công khai của Thu Trang)", padding=8)
         right.pack(side="left", fill="both", expand=True, padx=(8, 0))
         ttk.Label(right, text="Thông điệp nhận được (sửa thử rồi bấm Kiểm tra)",
                   font=(UI, UI_SIZE, "bold")).pack(anchor="w")
@@ -472,10 +605,10 @@ class SignTab(ttk.Frame):
         row2 = ttk.Frame(right)
         row2.pack(fill="x")
         ttk.Button(row2, text="Kiểm tra chữ ký", command=self.verify).pack(side="left")
-        self.flip_btn = ttk.Button(row2, text="Eve đổi 1 bit của tệp", command=self.flip_bit, state="disabled")
+        self.flip_btn = ttk.Button(row2, text="Mai Phương đổi 1 bit của tệp", command=self.flip_bit, state="disabled")
         self.flip_btn.pack(side="left", padx=6)
-        ttk.Button(row2, text="Thử khóa của Eve", command=lambda: self.verify("Eve")).pack(side="left")
-        self.result = tk.Label(right, text="Chưa kiểm tra", font=(UI, UI_SIZE + 5, "bold"), fg=GREY, pady=10)
+        ttk.Button(row2, text="Thử khóa của Mai Phương", command=lambda: self.verify("Mai Phương")).pack(side="left")
+        self.result = tk.Label(right, text="", font=(UI, UI_SIZE + 5, "bold"), fg=GREY, pady=10)
         self.result.pack(fill="x", pady=8)
         self.detail = OutputBox(right, height=14, width=40)
         self.detail.pack(fill="both", expand=True)
@@ -484,14 +617,13 @@ class SignTab(ttk.Frame):
         return "pss" if self.scheme.get() == "PSS" else "pkcs1v15"
 
     def sign(self):
-        pair = self.app.key("Alice", 1024 if self._scheme() == "pss" else 512, "Chữ ký có đệm")
+        pair = self.app.key("Thu Trang", 1024 if self._scheme() == "pss" else 512, "Chữ ký có đệm")
         if not pair:
             return
-        try:
-            data, name = self.src.get()
-        except OSError as err:
-            messagebox.showerror("Không đọc được tệp", str(err))
+        got = self.src.read()
+        if got is None:
             return
+        data, name = got
         priv, _ = pair
         scheme = self._scheme()
 
@@ -515,7 +647,7 @@ class SignTab(ttk.Frame):
             self.recv.configure(state="normal")
             self.recv.delete("1.0", "end")
             if name:
-                self.recv.insert("1.0", f"[Tệp nhận được: {name}, {len(data):,} byte — dùng nút 'Eve đổi 1 bit' để sửa]")
+                self.recv.insert("1.0", f"[Tệp nhận được: {name}, {len(data):,} byte — dùng nút 'Mai Phương đổi 1 bit' để sửa]")
                 self.recv.configure(state="disabled")
                 self.flip_btn.configure(state="normal")
             else:
@@ -523,7 +655,7 @@ class SignTab(ttk.Frame):
                 self.flip_btn.configure(state="disabled")
             self.result.configure(text="Đã ký — bấm Kiểm tra", fg=BLUE)
             self.detail.clear()
-            self.detail.append(f"Alice ký {'tệp ' + name if name else 'văn bản'} ({len(data):,} byte) "
+            self.detail.append(f"Thu Trang ký {'tệp ' + name if name else 'văn bản'} ({len(data):,} byte) "
                                f"bằng {self.scheme.get()}, khóa {priv[1].bit_length()} bit.\n")
 
         self.app.run(job, done, status="Đang băm và ký...")
@@ -533,9 +665,9 @@ class SignTab(ttk.Frame):
             b = bytearray(self.recv_data)
             b[len(b) // 2] ^= 0x01
             self.recv_data = bytes(b)
-            self.detail.append(f"Eve đổi 1 bit ở byte thứ {len(b) // 2:,} của tệp.\n", "bad")
+            self.detail.append(f"Mai Phương đổi 1 bit ở byte thứ {len(b) // 2:,} của tệp.\n", "bad")
 
-    def verify(self, signer="Alice"):
+    def verify(self, signer="Thu Trang"):
         pair = self.app.key(signer)
         if not pair:
             return
@@ -584,30 +716,29 @@ class ConfidentialityTab(ttk.Frame):
 
         top = ttk.Frame(self)
         top.pack(fill="x")
-        self.src = DataSource(top, "Thông điệp / tệp bí mật Alice gửi Bob",
-                              "Mã khóa két sắt phòng tài vụ: 7-3-9-1. Đổi mã sau ngày 30/10.", height=3)
+        self.src = DataSource(top, "Thông điệp / tệp bí mật Thu Trang gửi Thu Thủy", height=3)
         self.src.pack(fill="x")
 
         btns = ttk.LabelFrame(self, text="Thao tác", padding=6)
         btns.pack(fill="x", pady=4)
         actions = [
-            ("1. Chỉ ký (không mã hóa) — Eve thấy gì?", self.only_sign),
-            ("2. Alice KÝ RỒI MÃ HÓA gửi Bob", self.seal),
-            ("3. Bob mở", self.bob_open),
-            ("4. Eve mở bằng khóa của Eve", self.eve_open),
-            ("5. Eve sửa 1 byte bản mã", self.tamper),
-            ("6. Eve giả thư nhân danh Alice", self.forge),
-            ("7. Bob chuyển tiếp lén cho Charlie", self.forward),
-            ("Lưu tệp Bob đã giải mã...", self.save_plain),
+            ("1. Chỉ ký, không mã hóa: Mai Phương thấy gì?", self.only_sign),
+            ("2. Thu Trang KÝ RỒI MÃ HÓA gửi Thu Thủy", self.seal),
+            ("3. Thu Thủy mở", self.bob_open),
+            ("4. Mai Phương mở bằng khóa của Mai Phương", self.eve_open),
+            ("5. Mai Phương sửa 1 byte bản mã", self.tamper),
+            ("6. Mai Phương giả thư nhân danh Thu Trang", self.forge),
+            ("7. Thu Thủy chuyển tiếp lén cho Tuyết Linh", self.forward),
+            ("Lưu tệp Thu Thủy đã giải mã...", self.save_plain),
         ]
         for i, (t, cmd) in enumerate(actions):
-            ttk.Button(btns, text=t, command=cmd).grid(row=i // 4, column=i % 4, sticky="ew", padx=3, pady=2)
-        for c in range(4):
-            btns.columnconfigure(c, weight=1)
+            ttk.Button(btns, text=t, command=cmd).grid(row=i // 3, column=i % 3, sticky="ew", padx=3, pady=2)
+        for c in range(3):
+            btns.columnconfigure(c, weight=1, uniform="actions")
 
         body = ttk.PanedWindow(self, orient="horizontal")
         body.pack(fill="both", expand=True)
-        f1 = ttk.LabelFrame(body, text="Gói tin trên đường truyền (Eve nhìn thấy)", padding=4)
+        f1 = ttk.LabelFrame(body, text="Gói tin trên đường truyền (Mai Phương nhìn thấy)", padding=4)
         self.wire = OutputBox(f1)
         self.wire.pack(fill="both", expand=True)
         f2 = ttk.LabelFrame(body, text="Nhật ký", padding=4)
@@ -615,8 +746,6 @@ class ConfidentialityTab(ttk.Frame):
         self.log.pack(fill="both", expand=True)
         body.add(f1, weight=1)
         body.add(f2, weight=1)
-        self.log.append("Ký rồi mã hóa = chữ ký RSA của Alice + khóa phiên bọc bằng RSA-OAEP (khóa công khai của Bob)\n"
-                        "+ dữ liệu mã bằng SHA256-CTR + HMAC. Thứ tự gợi ý: bấm 1 → 2 → 3 → 4 → 5 → 6 → 7.\n", "dim")
 
     def _keys(self):
         need = 1024
@@ -634,10 +763,13 @@ class ConfidentialityTab(ttk.Frame):
         k = self._keys()
         if not k:
             return
-        data, name = self.src.get()
+        got = self.src.read()
+        if got is None:
+            return
+        data, name = got
 
         def job():
-            return rsa_full.sign_message(data, k["Alice"][0])
+            return rsa_full.sign_message(data, k["Thu Trang"][0])
 
         def done(s):
             self.wire.clear()
@@ -645,8 +777,8 @@ class ConfidentialityTab(ttk.Frame):
             preview = data[:600].decode("utf-8", "replace") if not name else f"<tệp {name}, {len(data):,} byte — gửi nguyên văn>"
             self.wire.append(f"M = {preview}\n", "bad")
             self.wire.append(f"S = {short_int(s)}\n")
-            ok = rsa_full.verify_message(data, s, k["Alice"][1])
-            self.log.append(f"\n[Chỉ ký] Eve đọc được toàn bộ nội dung; Eve còn tự kiểm tra được chữ ký: {ok}\n"
+            ok = rsa_full.verify_message(data, s, k["Thu Trang"][1])
+            self.log.append(f"\n[Chỉ ký] Mai Phương đọc được toàn bộ nội dung; Mai Phương còn tự kiểm tra được chữ ký: {ok}\n"
                             "=> Chữ ký số KHÔNG cung cấp tính bảo mật.\n", "bad")
 
         self.app.run(job, done, status="Đang ký...")
@@ -655,19 +787,18 @@ class ConfidentialityTab(ttk.Frame):
         k = self._keys()
         if not k:
             return
-        try:
-            data, name = self.src.get()
-        except OSError as err:
-            messagebox.showerror("Không đọc được tệp", str(err))
+        got = self.src.read()
+        if got is None:
             return
+        data, name = got
 
         def job():
-            return sm.seal(data, "Alice", k["Alice"][0], "Bob", k["Bob"][1], filename=name)
+            return sm.seal(data, "Thu Trang", k["Thu Trang"][0], "Thu Thủy", k["Thu Thủy"][1], filename=name)
 
         def done(env):
             self.env, self.plain, self.opened = env, data, None
-            self._show_env(env, "Alice → Bob: phong bì đã ký rồi mã hóa")
-            self.log.append(f"\n[Alice] Đã ký và mã hóa {len(data):,} byte gửi Bob\n", "ok")
+            self._show_env(env, "Thu Trang → Thu Thủy: phong bì đã ký rồi mã hóa")
+            self.log.append(f"\n[Thu Trang] Đã ký và mã hóa {len(data):,} byte gửi Thu Thủy\n", "ok")
 
         self.app.run(job, done, status="Đang ký rồi mã hóa...")
 
@@ -675,12 +806,12 @@ class ConfidentialityTab(ttk.Frame):
         k = self._keys()
         if not k or env is None:
             if env is None:
-                messagebox.showinfo("Chưa có phong bì", "Bấm '2. Alice KÝ RỒI MÃ HÓA' trước.")
+                messagebox.showinfo("Chưa có phong bì", "Bấm '2. Thu Trang KÝ RỒI MÃ HÓA' trước.")
             return
 
         def job():
             try:
-                return True, sm.open_sealed(env, me, k[me][0], {"Alice": k["Alice"][1]}.get)
+                return True, sm.open_sealed(env, me, k[me][0], {"Thu Trang": k["Thu Trang"][1]}.get)
             except sm.SecureMessageError as err:
                 return False, err.reason
 
@@ -703,56 +834,56 @@ class ConfidentialityTab(ttk.Frame):
         self.app.run(job, done, status=f"{me} đang mở phong bì...")
 
     def bob_open(self):
-        self._open(self.env, "Bob", "Bob mở bằng khóa riêng của Bob", True)
+        self._open(self.env, "Thu Thủy", "Thu Thủy mở bằng khóa riêng của Thu Thủy", True)
 
     def eve_open(self):
-        self._open(self.env, "Eve", "Eve chặn được phong bì, mở bằng khóa riêng của Eve", False)
+        self._open(self.env, "Mai Phương", "Mai Phương chặn được phong bì, mở bằng khóa riêng của Mai Phương", False)
 
     def tamper(self):
         if self.env is None:
-            return self._open(None, "Bob", "", False)
+            return self._open(None, "Thu Thủy", "", False)
         import base64
         ct = bytearray(base64.b64decode(self.env["ct"]))
         ct[len(ct) // 2] ^= 0x01
         bad = dict(self.env, ct=base64.b64encode(bytes(ct)).decode())
-        self._show_env(bad, "Phong bì đã bị Eve sửa 1 bit trong bản mã")
-        self._open(bad, "Bob", "Eve sửa 1 bit bản mã rồi chuyển tiếp cho Bob", False)
+        self._show_env(bad, "Phong bì đã bị Mai Phương sửa 1 bit trong bản mã")
+        self._open(bad, "Thu Thủy", "Mai Phương sửa 1 bit bản mã rồi chuyển tiếp cho Thu Thủy", False)
 
     def forge(self):
         k = self._keys()
         if not k:
             return
-        fake = "Alice: chuyển ngay 200 triệu vào tài khoản 0123 của Eve."
+        fake = "Thu Trang: chuyển ngay 200 triệu vào tài khoản 0123 của Mai Phương."
 
         def job():
-            return sm.seal(fake, "Alice", k["Eve"][0], "Bob", k["Bob"][1])
+            return sm.seal(fake, "Thu Trang", k["Mai Phương"][0], "Thu Thủy", k["Thu Thủy"][1])
 
         def done(env):
-            self._show_env(env, "Phong bì giả do Eve tạo (mã hóa bằng khóa CÔNG KHAI của Bob)")
-            self.log.append("\n[Eve] Ai cũng có khóa công khai của Bob nên Eve tự mã hóa thư giả, ký bằng khóa của Eve.\n")
-            self._open(env, "Bob", "Bob mở thư giả", False)
+            self._show_env(env, "Phong bì giả do Mai Phương tạo (mã hóa bằng khóa CÔNG KHAI của Thu Thủy)")
+            self.log.append("\n[Mai Phương] Ai cũng có khóa công khai của Thu Thủy nên Mai Phương tự mã hóa thư giả, ký bằng khóa của Mai Phương.\n")
+            self._open(env, "Thu Thủy", "Thu Thủy mở thư giả", False)
 
-        self.app.run(job, done, status="Eve đang tạo thư giả...")
+        self.app.run(job, done, status="Mai Phương đang tạo thư giả...")
 
     def forward(self):
         k = self._keys()
         if not k or self.env is None:
-            return self._open(None, "Bob", "", False)
+            return self._open(None, "Thu Thủy", "", False)
         env = self.env
 
         def job():
-            inner = sm.decrypt_envelope(env, k["Bob"][0])
-            return sm.encrypt_for(inner, "Charlie", k["Charlie"][1])
+            inner = sm.decrypt_envelope(env, k["Thu Thủy"][0])
+            return sm.encrypt_for(inner, "Tuyết Linh", k["Tuyết Linh"][1])
 
         def done(fwd):
-            self._show_env(fwd, "Bob giải mã rồi mã hóa lại thư của Alice gửi Charlie")
-            self._open(fwd, "Charlie", "Charlie mở thư Bob chuyển tiếp (chữ ký Alice vẫn nguyên)", False)
+            self._show_env(fwd, "Thu Thủy giải mã rồi mã hóa lại thư của Thu Trang gửi Tuyết Linh")
+            self._open(fwd, "Tuyết Linh", "Tuyết Linh mở thư Thu Thủy chuyển tiếp (chữ ký Thu Trang vẫn nguyên)", False)
 
-        self.app.run(job, done, status="Bob đang chuyển tiếp...")
+        self.app.run(job, done, status="Thu Thủy đang chuyển tiếp...")
 
     def save_plain(self):
         if not self.opened:
-            messagebox.showinfo("Chưa có", "Bấm '3. Bob mở' thành công trước.")
+            messagebox.showinfo("Chưa có", "Bấm '3. Thu Thủy mở' thành công trước.")
             return
         name = self.opened["meta"].get("filename") or "thong_diep.txt"
         path = filedialog.asksaveasfilename(initialfile="giai_ma_" + name)
@@ -772,8 +903,8 @@ class MiniTab(ttk.Frame):
         row = ttk.Frame(self)
         row.pack(fill="x")
         self.vars = {}
-        for name, default in (("p", "17"), ("q", "11"), ("e", "7"), ("M", "88")):
-            f, v = labeled_entry(row, name, 8, default)
+        for name in ("p", "q", "e", "M"):
+            f, v = labeled_entry(row, name, 8)
             f.pack(side="left")
             self.vars[name] = v
         ttk.Button(row, text="Tính từng bước", command=self.compute).pack(side="left", padx=6)
@@ -781,10 +912,12 @@ class MiniTab(ttk.Frame):
         ttk.Button(row, text="Xóa", command=lambda: self.out.clear()).pack(side="right")
         self.out = OutputBox(self)
         self.out.pack(fill="both", expand=True, pady=(6, 0))
-        self.compute()
 
     def compute(self):
         self.out.clear()
+        if not all(self.vars[k].get().strip() for k in ("p", "q", "e", "M")):
+            self.out.append("[Lỗi] Hãy nhập đủ p, q, e, M (ví dụ trên lớp: p = 17, q = 11, e = 7, M = 88).\n", "bad")
+            return
         try:
             p, q, e, M = (int(self.vars[k].get()) for k in ("p", "q", "e", "M"))
             priv, pub = generate_keypair(p=p, q=q, e=e)
@@ -832,36 +965,51 @@ class ScenarioTab(ttk.Frame):
         self.bits = ttk.Combobox(row, values=("512", "1024", "2048"), width=6, state="readonly")
         self.bits.set("1024")
         self.bits.pack(side="left", padx=4)
+        ttk.Button(row, text="Xóa kết quả", command=lambda: self.out.clear()).pack(side="right")
 
         ks = lambda: int(self.bits.get())
         groups = [
             ("Kịch bản an toàn", [
                 ("S1  Xác thực người dùng", lambda: run_scenario_s1(keysize=ks())),
-                ("S2  Chống chối bỏ (CA + TSA, HMAC)", lambda: run_scenario_s2(keysize=ks())),
-                ("S3  Khóa bị lộ, thu hồi, dấu thời gian", lambda: run_scenario_s3(keysize=ks())),
-                ("S4  Tấn công phát lại (nonce)", lambda: run_scenario_s4(keysize=ks())),
-                ("S5  Thay thế khóa công khai", lambda: run_scenario_s5(keysize=ks())),
+                ("S2  Chống chối bỏ", lambda: run_scenario_s2(keysize=ks())),
+                ("S3  Khóa bị lộ, thu hồi", lambda: run_scenario_s3(keysize=ks())),
+                ("S4  Phát lại (nonce)", lambda: run_scenario_s4(keysize=ks())),
+                ("S5  Thay khóa công khai", lambda: run_scenario_s5(keysize=ks())),
                 ("S6  Tính bảo mật", lambda: run_scenario_s6(keysize=max(ks(), 1024))),
                 ("Chạy tất cả S1-S6", lambda: run_all(keysize=max(ks(), 1024))),
             ]),
-            ("Tấn công vào chữ ký", [
-                ("Phân tích N nhỏ (n = 3233)", lambda: small_n.demo_small_n()),
-                ("Giả mạo khi không có đệm", lambda: forgery_no_padding.demo_no_padding_forgery()),
+            ("Tấn công: lược đồ ký & hàm băm", [
+                ("Phân tích N nhỏ", lambda: small_n.demo_small_n()),
+                ("Giả mạo tồn tại", lambda: forgery_no_padding.demo_existential_forgery()),
+                ("Giả mạo nhân tính", lambda: forgery_no_padding.demo_no_padding_forgery()),
                 ("Bleichenbacher e = 3", lambda: bleichenbacher_e3.demo_bleichenbacher(keysize=max(ks(), 1536))),
+                ("Va chạm băm (ngày sinh)", lambda: hash_collision.demo_hash_collision(keysize=max(ks(), 1024))),
+            ]),
+            ("Tấn công: sinh khóa & thiết bị ký", [
+                ("Fermat (p ≈ q)", lambda: weak_keys.demo_fermat(keysize=max(ks(), 1024))),
+                ("Chung thừa số (gcd)", lambda: weak_keys.demo_shared_prime(keysize=max(ks(), 1024))),
+                ("Dùng chung modulus N", lambda: weak_keys.demo_common_modulus(keysize=max(ks(), 1024))),
+                ("Lỗi phần cứng ký CRT", lambda: crt_fault.demo_crt_fault(keysize=max(ks(), 1024))),
             ]),
             ("Tấn công vào tính bảo mật", [
-                ("Từ điển: sách giáo khoa vs OAEP", lambda: confidentiality.demo_dictionary(keysize=max(ks(), 1024))),
+                ("Từ điển: RSA thuần / OAEP", lambda: confidentiality.demo_dictionary(keysize=max(ks(), 1024))),
                 ("Ký song song mã hóa", lambda: confidentiality.demo_encrypt_and_sign_leak(keysize=max(ks(), 1024))),
-                ("Håstad broadcast (e = 3)", lambda: confidentiality.demo_hastad(keysize=1024)),
-                ("Dùng chung khóa ký & giải mã", lambda: confidentiality.demo_same_key_sign_decrypt()),
+                ("Håstad (e = 3)", lambda: confidentiality.demo_hastad(keysize=1024)),
+                ("Chung khóa ký & giải mã", lambda: confidentiality.demo_same_key_sign_decrypt()),
+            ]),
+            ("Tổng hợp", [
+                ("Chạy toàn bộ 13 tấn công + bảng tổng kết", lambda: run_all_attacks()),
             ]),
         ]
         for title, items in groups:
             box = ttk.LabelFrame(left, text=title, padding=6)
             box.pack(fill="x", pady=4)
-            for label, fn in items:
-                ttk.Button(box, text=label, width=38, command=lambda f=fn, l=label: self.launch(f, l)).pack(fill="x", pady=1)
-        ttk.Button(left, text="Xóa kết quả", command=lambda: self.out.clear()).pack(fill="x", pady=6)
+            cols = 2 if len(items) > 1 else 1      # xếp 2 cột cho đủ chiều cao cửa sổ
+            for i, (label, fn) in enumerate(items):
+                btn = ttk.Button(box, text=label, width=52 // cols, command=lambda f=fn, l=label: self.launch(f, l))
+                btn.grid(row=i // cols, column=i % cols, sticky="ew", padx=1, pady=1)
+            for c in range(cols):
+                box.columnconfigure(c, weight=1)
 
         self.out = OutputBox(self)
         self.out.pack(side="left", fill="both", expand=True, padx=(8, 0))

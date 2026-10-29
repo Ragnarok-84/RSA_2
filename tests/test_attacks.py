@@ -6,7 +6,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.sha256 import hash_sha256
-from attacks import small_n, forgery_no_padding, bleichenbacher_e3, confidentiality
+from attacks import (small_n, forgery_no_padding, bleichenbacher_e3, hash_collision, weak_keys, crt_fault,
+                     confidentiality)
 
 REAL = os.environ.get("REAL") == "1"
 KEYSIZE = 2048 if REAL else 512
@@ -36,6 +37,43 @@ class TestSignatureAttacks(unittest.TestCase):
             bleichenbacher_e3.attack_bleichenbacher_e3((65537, 1 << 2048), hash_sha256("x"))
         with self.assertRaises(ValueError):
             bleichenbacher_e3.attack_bleichenbacher_e3((3, (1 << 1023) + 1), hash_sha256("x"))
+
+    def test_existential_forgery(self):
+        textbook_broken, padding_safe = forgery_no_padding.demo_existential_forgery(keysize=KEYSIZE, verbose=False)
+        self.assertTrue(textbook_broken)
+        self.assertTrue(padding_safe)
+
+    def test_hash_collision(self):
+        m1, m2, _ = hash_collision.birthday_attack(hash_collision.HONEST, hash_collision.FRAUD, bits=16)
+        self.assertNotEqual(m1, m2)
+        self.assertEqual(hash_collision.weak_hash(m1, 16), hash_collision.weak_hash(m2, 16))
+        forged, sha256_safe = hash_collision.demo_hash_collision(bits=16, keysize=OAEP_KEYSIZE, verbose=False)
+        self.assertTrue(forged)
+        self.assertTrue(sha256_safe)
+
+
+class TestKeyGenerationAttacks(unittest.TestCase):
+    def test_fermat(self):
+        self.assertEqual(weak_keys.fermat_factor(101 * 103)[:2], (101, 103))
+        broken, safe = weak_keys.demo_fermat(keysize=OAEP_KEYSIZE, verbose=False)
+        self.assertTrue(broken)
+        self.assertTrue(safe)
+
+    def test_shared_prime(self):
+        self.assertEqual(weak_keys.find_shared_primes([7 * 11, 13 * 17, 7 * 19]), [(0, 2, 7)])
+        broken, others_safe = weak_keys.demo_shared_prime(keysize=KEYSIZE, count=4, verbose=False)
+        self.assertTrue(broken)
+        self.assertTrue(others_safe)
+
+    def test_common_modulus(self):
+        broken, safe = weak_keys.demo_common_modulus(keysize=KEYSIZE, verbose=False)
+        self.assertTrue(broken)
+        self.assertTrue(safe)
+
+    def test_crt_fault(self):
+        broken, protected = crt_fault.demo_crt_fault(keysize=KEYSIZE, verbose=False)
+        self.assertTrue(broken)        # một chữ ký lỗi đủ lộ khóa
+        self.assertTrue(protected)     # thẻ tự kiểm tra không trả chữ ký lỗi
 
 
 class TestConfidentialityAttacks(unittest.TestCase):

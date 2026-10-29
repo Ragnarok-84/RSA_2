@@ -24,10 +24,10 @@ DEFAULT_KEY_BITS = 2048
 ORGANIZATION = "Demo PKI"
 CA_NAME = "Demo Root CA"
 TSA_NAME = "Demo TSA"
-SUBJECT_NAME = "Alice"
+SUBJECT_NAME = "Thu Trang"
 
-MSG_ORIGINAL = "Hợp đồng số 2026/HD-001: Alice đồng ý bán lô hàng A cho Bob, giá 100.000.000 VND.".encode("utf-8")
-MSG_FORGED = "Lệnh chuyển khoản: Alice chuyển 500.000.000 VND cho Mallory.".encode("utf-8")
+MSG_ORIGINAL = "Hợp đồng số 2026/HD-001: Thu Trang đồng ý bán lô hàng A cho Thu Thủy, giá 100.000.000 VND.".encode("utf-8")
+MSG_FORGED = "Lệnh chuyển khoản: Thu Trang chuyển 500.000.000 VND cho Mallory.".encode("utf-8")
 
 
 # --------------------------------------------------------------------------- #
@@ -355,12 +355,12 @@ def scenario_s5(pki: PKI) -> Scenario:
     crl = build_crl(pki.ca_cert, pki.ca_key, [(cert.serial_number, t_revoke)], t_revoke, utc(2026, 12, 31))
 
     timeline = [
-        ("t_s", t_sign, "Alice ký hợp đồng thật"),
-        ("t_c", t_compromise, "Khóa bí mật d của Alice bị lộ"),
+        ("t_s", t_sign, "Thu Trang ký hợp đồng thật"),
+        ("t_c", t_compromise, "Khóa bí mật d của Thu Trang bị lộ"),
         ("t_f1", t_forge_before, "Mallory ký giả (trước khi CA thu hồi)"),
         ("t_r", t_revoke, "CA thu hồi chứng thư (CRL, keyCompromise)"),
         ("t_f2", t_forge_after, f"Mallory ký giả, khai signingTime lùi về {fmt(backdated)}"),
-        ("t_v", t_verify, "Bob kiểm tra chữ ký"),
+        ("t_v", t_verify, "Thu Thủy kiểm tra chữ ký"),
     ]
 
     cases: list[TestCase] = []
@@ -427,7 +427,7 @@ def scenario_s6(pki: PKI) -> Scenario:
 
     timeline = [
         ("notBefore", not_before(cert), "Chứng thư bắt đầu có hiệu lực"),
-        ("t_sign", t_sign, "Alice ký khi chứng thư còn hạn"),
+        ("t_sign", t_sign, "Thu Trang ký khi chứng thư còn hạn"),
         ("t_v1", t_verify_before, "Kiểm tra trước khi hết hạn"),
         ("notAfter", not_after(cert), "Chứng thư hết hạn"),
         ("t_late", t_late, "Chữ ký tạo sau khi hết hạn"),
@@ -494,7 +494,7 @@ def print_inputs(pki: PKI, scenario: Scenario, full: bool) -> None:
     digest = hashlib.sha256(MSG_ORIGINAL).hexdigest()
 
     print("  [Dữ liệu đầu vào]")
-    print(f"  Khóa RSA của Alice: {public.n.bit_length()} bit")
+    print(f"  Khóa RSA của Thu Trang: {public.n.bit_length()} bit")
     print(f"    n = {hex_preview(public.n, full)}")
     print(f"    e = {public.e}")
     print(f"    d = {hex_preview(private.d, full)}")
@@ -591,7 +591,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
-    print(f"Đang sinh khóa RSA-{args.bits} cho CA, TSA và Alice ...\n")
+    print(f"Đang sinh khóa RSA-{args.bits} cho CA, TSA và Thu Trang ...\n")
     pki = build_pki(args.bits)
 
     handle = open(args.csv, "w", newline="", encoding="utf-8-sig") if args.csv else None

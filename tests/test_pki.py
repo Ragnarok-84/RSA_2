@@ -35,8 +35,8 @@ class TestCertificate(unittest.TestCase):
     def test_tampered_fields(self):
         ca = pki_cert.CertificateAuthority("CA", keysize=KEYSIZE)
         _, pub = generate_keypair(keysize=KEYSIZE)
-        c = ca.issue_certificate("Alice", pub)
-        for field, value in (("subject", "Eve"), ("not_after", "2099-01-01"), ("key_usage", "encryption")):
+        c = ca.issue_certificate("Thu Trang", pub)
+        for field, value in (("subject", "Mai Phương"), ("not_after", "2099-01-01"), ("key_usage", "encryption")):
             self.assertFalse(pki_cert.verify_certificate(dict(c, **{field: value}), ca.certificate)[0], field)
 
     def test_bad_usage_value(self):
@@ -77,14 +77,14 @@ class TestTimestampAndNonce(unittest.TestCase):
 
     def test_nonce_single_use_owner_expiry(self):
         reg = NonceRegistry(lifetime_seconds=60)
-        n = reg.issue("Alice")
-        self.assertTrue(reg.consume(n, "Alice")[0])
-        self.assertFalse(reg.consume(n, "Alice")[0])                            # dùng lại
-        n2 = reg.issue("Alice")
-        self.assertFalse(reg.consume(n2, "Eve")[0])                             # sai chủ thể
-        n3 = reg.issue("Alice")
-        self.assertFalse(reg.consume(n3, "Alice", now=datetime.now() + timedelta(minutes=5))[0])   # hết hạn
-        self.assertNotEqual(reg.issue("Alice"), reg.issue("Alice"))
+        n = reg.issue("Thu Trang")
+        self.assertTrue(reg.consume(n, "Thu Trang")[0])
+        self.assertFalse(reg.consume(n, "Thu Trang")[0])                            # dùng lại
+        n2 = reg.issue("Thu Trang")
+        self.assertFalse(reg.consume(n2, "Mai Phương")[0])                             # sai chủ thể
+        n3 = reg.issue("Thu Trang")
+        self.assertFalse(reg.consume(n3, "Thu Trang", now=datetime.now() + timedelta(minutes=5))[0])   # hết hạn
+        self.assertNotEqual(reg.issue("Thu Trang"), reg.issue("Thu Trang"))
 
 
 if __name__ == "__main__":

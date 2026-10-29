@@ -99,10 +99,10 @@ class TestOaepEncryption(unittest.TestCase):
         self.assertEqual(rsa_full.textbook_decrypt(rsa_full.textbook_encrypt(42, self.pub), self.priv), 42)
 
     def test_wrong_key_label_tamper(self):
-        c = rsa_full.oaep_encrypt(b"bi mat", self.pub, label=b"Bob")
+        c = rsa_full.oaep_encrypt(b"bi mat", self.pub, label="Thu Thủy".encode())
         other, _ = generate_keypair(keysize=OAEP_KEYSIZE)
         bad = bytearray(c); bad[-1] ^= 1
-        for args in ((c, other, b"Bob"), (c, self.priv, b"Eve"), (bytes(bad), self.priv, b"Bob"), (c[:-1], self.priv, b"Bob")):
+        for args in ((c, other, "Thu Thủy".encode()), (c, self.priv, "Mai Phương".encode()), (bytes(bad), self.priv, "Thu Thủy".encode()), (c[:-1], self.priv, "Thu Thủy".encode())):
             with self.assertRaises(rsa_full.DecryptionError):
                 rsa_full.oaep_decrypt(*args)
 
@@ -136,7 +136,7 @@ class TestRsaMini(unittest.TestCase):
         self.assertFalse(self.r["hash_tampered"])
 
     def test_confidentiality_numbers(self):
-        # Bob: p=23, q=29, e=3 -> d=411. Alice ký S=11, mã hóa C1=88^3 mod 667, C2=11^3 mod 667
+        # Thu Thủy: p=23, q=29, e=3 -> d=411. Thu Trang ký S=11, mã hóa C1=88^3 mod 667, C2=11^3 mod 667
         r = self.r
         self.assertEqual((r["bob_N"], r["bob_d"], r["conf_C1"], r["conf_C2"], r["conf_M"]), (667, 411, 465, 664, 88))
         self.assertTrue(r["conf_sig_ok"])

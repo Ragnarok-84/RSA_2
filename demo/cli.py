@@ -23,7 +23,9 @@ from scenarios.s4_replay import run_scenario_s4
 from scenarios.s5_key_substitution import run_scenario_s5
 from scenarios.s6_confidentiality import run_scenario_s6
 from scenarios.run_all import run_all
-from attacks import small_n, forgery_no_padding, bleichenbacher_e3, confidentiality
+from attacks import (small_n, forgery_no_padding, bleichenbacher_e3, hash_collision, weak_keys, crt_fault,
+                     confidentiality)
+from attacks.run_all import run_all as run_all_attacks
 from demo import avalanche, file_signer
 
 
@@ -94,21 +96,21 @@ def interactive_seal():
     print("\n--- TÍNH BẢO MẬT: KÝ RỒI MÃ HÓA THÔNG ĐIỆP ---")
     message = read_text("Nhập thông điệp bí mật", "Mật khẩu Wi-Fi phòng họp: ATBMTT@2026")
     bits = read_int("Số bit khóa (>= 1024, mặc định 2048): ", 2048)
-    print("Đang sinh khóa ký của Alice và khóa mã hóa của Bob...")
+    print("Đang sinh khóa ký của Thu Trang và khóa mã hóa của Thu Thủy...")
     a_priv, a_pub = generate_keypair(keysize=bits)
     b_priv, b_pub = generate_keypair(keysize=bits)
-    env = sm.seal(message, "Alice", a_priv, "Bob", b_pub)
-    print("\n[Alice -> Bob] Phong bì trên đường truyền (Eve thấy):")
+    env = sm.seal(message, "Thu Trang", a_priv, "Thu Thủy", b_pub)
+    print("\n[Thu Trang -> Thu Thủy] Phong bì trên đường truyền (Mai Phương thấy):")
     for k, v in env.items():
         print(f"   {k:<5}: {v[:70]}{'...' if len(v) > 70 else ''}")
     e_priv, _ = generate_keypair(keysize=bits)
     try:
-        sm.open_sealed(env, "Eve", e_priv, {"Alice": a_pub}.get)
+        sm.open_sealed(env, "Mai Phương", e_priv, {"Thu Trang": a_pub}.get)
     except sm.SecureMessageError as err:
-        print(f"\n[Eve] {err.reason}")
-    r = sm.open_sealed(env, "Bob", b_priv, {"Alice": a_pub}.get)
-    print(f"[Bob] Giải mã: '{r['message'].decode()}'")
-    print(f"[Bob] Chữ ký hợp lệ, người gửi: {r['sender']} lúc {r['meta']['time']}")
+        print(f"\n[Mai Phương] {err.reason}")
+    r = sm.open_sealed(env, "Thu Thủy", b_priv, {"Thu Trang": a_pub}.get)
+    print(f"[Thu Thủy] Giải mã: '{r['message'].decode()}'")
+    print(f"[Thu Thủy] Chữ ký hợp lệ, người gửi: {r['sender']} lúc {r['meta']['time']}")
 
 
 def _ask_file(prompt):
@@ -178,22 +180,33 @@ MENU = [
         ("12", "S6: TÍNH BẢO MẬT — chỉ ký / ký rồi mã hóa", run_scenario_s6),
         ("13", "Chạy toàn bộ S1-S6 (run_all)", lambda: run_all()),
     ]),
-    ("TẤN CÔNG — CHỮ KÝ", [
+    ("TẤN CÔNG — LƯỢC ĐỒ KÝ & HÀM BĂM", [
         ("14", "Phân tích modulus N nhỏ -> lộ khóa riêng", attack_small_n_menu),
-        ("15", "Giả mạo chữ ký không đệm (tính đồng cấu)", lambda: forgery_no_padding.demo_no_padding_forgery()),
-        ("16", "Bleichenbacher e=3 (bộ kiểm tra đệm lỏng lẻo)", lambda: bleichenbacher_e3.demo_bleichenbacher()),
+        ("15", "Giả mạo tồn tại (RSA thuần: chọn S, tính M = S^e)",
+         lambda: forgery_no_padding.demo_existential_forgery()),
+        ("16", "Giả mạo nhân tính khi không đệm (S1*S2)", lambda: forgery_no_padding.demo_no_padding_forgery()),
+        ("17", "Bleichenbacher e=3 (bộ kiểm tra đệm lỏng lẻo)", lambda: bleichenbacher_e3.demo_bleichenbacher()),
+        ("18", "Va chạm hàm băm — nghịch lý ngày sinh (2 hợp đồng, 1 chữ ký)",
+         lambda: hash_collision.demo_hash_collision()),
+    ]),
+    ("TẤN CÔNG — SINH KHÓA, QUẢN LÝ KHÓA, THIẾT BỊ KÝ", [
+        ("19", "Phân tích Fermat khi p, q quá gần nhau", lambda: weak_keys.demo_fermat()),
+        ("20", "Hai khóa chung thừa số nguyên tố -> gcd phá cả hai", lambda: weak_keys.demo_shared_prime()),
+        ("21", "Dùng chung modulus N -> đồng nghiệp tính được khóa riêng", lambda: weak_keys.demo_common_modulus()),
+        ("22", "Lỗi phần cứng khi ký bằng CRT -> 1 chữ ký lỗi lộ khóa", lambda: crt_fault.demo_crt_fault()),
     ]),
     ("TẤN CÔNG — TÍNH BẢO MẬT", [
-        ("17", "Tấn công từ điển: RSA sách giáo khoa vs OAEP", lambda: confidentiality.demo_dictionary()),
-        ("18", "Ký song song mã hóa làm lộ nội dung", lambda: confidentiality.demo_encrypt_and_sign_leak()),
-        ("19", "Håstad broadcast (e=3, cùng bản rõ gửi 3 người)", lambda: confidentiality.demo_hastad()),
-        ("20", "Dùng chung khóa ký & giải mã -> 'nhờ ký' = giải mã hộ",
+        ("23", "Tấn công từ điển: RSA sách giáo khoa vs OAEP", lambda: confidentiality.demo_dictionary()),
+        ("24", "Ký song song mã hóa làm lộ nội dung", lambda: confidentiality.demo_encrypt_and_sign_leak()),
+        ("25", "Håstad broadcast (e=3, cùng bản rõ gửi 3 người)", lambda: confidentiality.demo_hastad()),
+        ("26", "Dùng chung khóa ký & giải mã -> 'nhờ ký' = giải mã hộ",
          lambda: confidentiality.demo_same_key_sign_decrypt()),
+        ("27", "Chạy toàn bộ 13 tấn công + bảng tổng kết", lambda: run_all_attacks()),
     ]),
     ("KIỂM THỬ & ĐÁNH GIÁ", [
-        ("21", "Đối chiếu test vector NIST / RFC / thư viện chuẩn", run_doi_chieu),
-        ("22", "Benchmark tốc độ theo kích thước khóa và dữ liệu", run_benchmark_menu),
-        ("23", "Chạy bộ test (tests/)", run_full_tests),
+        ("28", "Đối chiếu test vector NIST / RFC / thư viện chuẩn", run_doi_chieu),
+        ("29", "Benchmark tốc độ theo kích thước khóa và dữ liệu", run_benchmark_menu),
+        ("30", "Chạy bộ test (tests/)", run_full_tests),
     ]),
 ]
 ACTIONS = {key: fn for _, items in MENU for key, _, fn in items}
@@ -215,7 +228,7 @@ def main():
     while True:
         menu()
         try:
-            choice = input("Nhập lựa chọn của bạn (0-23): ").strip()
+            choice = input(f"Nhập lựa chọn của bạn (0-{len(ACTIONS)}): ").strip()
         except EOFError:
             break
         if choice == "0":

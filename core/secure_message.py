@@ -1,29 +1,29 @@
 # Tệp: core/secure_message.py   [bổ sung - TÍNH BẢO MẬT, báo cáo mục bảo mật]
 # KẾT HỢP CHỮ KÝ SỐ + MÃ HÓA: "Ký rồi mã hóa" (Sign-then-Encrypt) theo mô hình mã hóa lai.
 #
-#   Người gửi (Alice)                               Người nhận (Bob)
+#   Người gửi (Thu Trang)                               Người nhận (Thu Thủy)
 #   ---------------------------------------------   ---------------------------------------------
 #   1. meta = {from, to, tên tệp, SHA256(M), time}
 #      S = Sign_dA(meta)            (chữ ký RSA)
 #   2. inner = meta || S || M
 #   3. K ngẫu nhiên 32 byte (khóa phiên)
-#      ct  = inner XOR KeyStream(K_enc, nonce)  ->   4. K = OAEP-Decrypt_dB(ek)       (chỉ Bob làm được)
+#      ct  = inner XOR KeyStream(K_enc, nonce)  ->   4. K = OAEP-Decrypt_dB(ek)       (chỉ Thu Thủy làm được)
 #      tag = HMAC(K_mac, nonce || ct)           ->   5. kiểm tra tag  (phát hiện sửa bản mã)
-#      ek  = OAEP-Encrypt_eB(K)                 ->   6. giải mã ct -> inner -> kiểm tra meta.to == Bob
+#      ek  = OAEP-Encrypt_eB(K)                 ->   6. giải mã ct -> inner -> kiểm tra meta.to == Thu Thủy
 #                                                     7. Verify_eA(meta, S), SHA256(M) == meta.sha256
 #
 # Đạt được cả 4 tính chất:
 #   BẢO MẬT     : chỉ người giữ dB mới lấy được K -> đọc được M (kẻ nghe lén chỉ thấy bản mã).
 #   TOÀN VẸN    : HMAC trên bản mã + băm SHA-256 của M nằm trong phần được ký.
-#   CHỨNG THỰC  : chữ ký RSA của Alice (khóa công khai lấy từ chứng thư CA).
-#   CHỐNG CHỐI BỎ: Bob giữ (meta, S) làm bằng chứng; chỉ Alice có dA để tạo S.
+#   CHỨNG THỰC  : chữ ký RSA của Thu Trang (khóa công khai lấy từ chứng thư CA).
+#   CHỐNG CHỐI BỎ: Thu Thủy giữ (meta, S) làm bằng chứng; chỉ Thu Trang có dA để tạo S.
 #
 # Vì sao "ký rồi mã hóa" mà không "mã hóa rồi ký"?
-#   - Mã hóa rồi ký: chữ ký nằm ngoài, Eve gỡ chữ ký của Alice và ký lại bằng khóa của Eve
-#     -> Bob tưởng thông điệp của Eve. Đồng thời trọng tài không xem được nội dung đã ký.
-#   - Ký song song với mã hóa (Enc(M) || Sign(M)): chữ ký lộ SHA256(M) -> Eve đoán M từ tập nhỏ.
-#   - Ký rồi mã hóa NGÂY THƠ (không ghi tên người nhận vào phần ký): Bob giải mã rồi mã hóa lại
-#     gửi cho Charlie, Charlie tưởng Alice viết cho mình (surreptitious forwarding, Davis 2001)
+#   - Mã hóa rồi ký: chữ ký nằm ngoài, Mai Phương gỡ chữ ký của Thu Trang và ký lại bằng khóa của Mai Phương
+#     -> Thu Thủy tưởng thông điệp của Mai Phương. Đồng thời trọng tài không xem được nội dung đã ký.
+#   - Ký song song với mã hóa (Enc(M) || Sign(M)): chữ ký lộ SHA256(M) -> Mai Phương đoán M từ tập nhỏ.
+#   - Ký rồi mã hóa NGÂY THƠ (không ghi tên người nhận vào phần ký): Thu Thủy giải mã rồi mã hóa lại
+#     gửi cho Tuyết Linh, Tuyết Linh tưởng Thu Trang viết cho mình (surreptitious forwarding, Davis 2001)
 #     -> phải đưa trường "to" vào phần được ký như bước 1.
 #
 # Phần mã hóa đối xứng: dòng khóa sinh bằng SHA-256 ở chế độ đếm (giống CTR mode):
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     from core.rsa_math import generate_keypair
     a_priv, a_pub = generate_keypair(keysize=1024)
     b_priv, b_pub = generate_keypair(keysize=1024)
-    env = seal("Lương tháng 10: 35.000.000 VNĐ", "Alice", a_priv, "Bob", b_pub)
-    print("Phong bì (Eve nhìn thấy):", {k: (v[:40] + "...") if len(v) > 40 else v for k, v in env.items()})
-    r = open_sealed(env, "Bob", b_priv, {"Alice": a_pub}.get)
-    print("Bob mở được:", r["message"].decode(), "| người gửi:", r["sender"])
+    env = seal("Lương tháng 10: 35.000.000 VNĐ", "Thu Trang", a_priv, "Thu Thủy", b_pub)
+    print("Phong bì (Mai Phương nhìn thấy):", {k: (v[:40] + "...") if len(v) > 40 else v for k, v in env.items()})
+    r = open_sealed(env, "Thu Thủy", b_priv, {"Thu Trang": a_pub}.get)
+    print("Thu Thủy mở được:", r["message"].decode(), "| người gửi:", r["sender"])

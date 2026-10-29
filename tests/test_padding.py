@@ -77,12 +77,12 @@ class TestMgf1Oaep(unittest.TestCase):
 
     def test_oaep_reject(self):
         k = 128
-        em = pd.oaep_encode(b"bi mat", k, b"Bob")
+        em = pd.oaep_encode(b"bi mat", k, "Thu Thủy".encode())
         with self.assertRaises(pd.DecodingError):
-            pd.oaep_decode(em, k, b"Eve")                   # sai nhãn
+            pd.oaep_decode(em, k, "Mai Phương".encode())                   # sai nhãn
         bad = bytearray(em); bad[0] = 1
         with self.assertRaises(pd.DecodingError):
-            pd.oaep_decode(bytes(bad), k, b"Bob")
+            pd.oaep_decode(bytes(bad), k, "Thu Thủy".encode())
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ def demo_small_n(n=3233, e=17, verbose=True):
     m = 1234 % n
     s = mod_exp(m, d, n)
     ok = mod_exp(s, e, n) == m
-    say(f"[3] Eve ký giả M = {m}: S = {s}; kiểm tra bằng khóa công khai: {'HỢP LỆ' if ok else 'sai'}")
+    say(f"[3] Mai Phương ký giả M = {m}: S = {s}; kiểm tra bằng khóa công khai: {'HỢP LỆ' if ok else 'sai'}")
     say("[!] Phòng chống: N >= 2048 bit (NIST SP 800-57), p và q sinh ngẫu nhiên bằng CSPRNG.")
     return ok
 

@@ -43,14 +43,14 @@ def demo_dictionary(keysize=1024, verbose=True):
     priv, pub = generate_keypair(keysize=keysize)
     candidates = ["DONG Y", "KHONG DONG Y", "PHIEU TRANG"]
     secret = "KHONG DONG Y"
-    say(f"[1] Bob gửi phiếu bầu mật cho Alice. Tập phiếu chỉ có: {candidates}")
+    say(f"[1] Thu Thủy gửi phiếu bầu mật cho Thu Trang. Tập phiếu chỉ có: {candidates}")
     c_text = textbook_encrypt(bytes_to_int(secret.encode()), pub)
     found_text = attack_textbook_dictionary(pub, c_text, candidates)
-    say(f"[2] RSA sách giáo khoa: Eve mã hóa thử 3 ứng viên bằng khóa công khai -> tìm được '{found_text}'")
+    say(f"[2] RSA sách giáo khoa: Mai Phương mã hóa thử 3 ứng viên bằng khóa công khai -> tìm được '{found_text}'")
     c_oaep = oaep_encrypt(secret, pub)
     found_oaep = attack_oaep_dictionary(pub, c_oaep, candidates)
-    say(f"[3] RSA-OAEP: bản mã ngẫu nhiên hóa, Eve thử lại -> {found_oaep!r} (không tìm được)")
-    say(f"    Alice vẫn giải mã đúng: '{oaep_decrypt(c_oaep, priv).decode()}'")
+    say(f"[3] RSA-OAEP: bản mã ngẫu nhiên hóa, Mai Phương thử lại -> {found_oaep!r} (không tìm được)")
+    say(f"    Thu Trang vẫn giải mã đúng: '{oaep_decrypt(c_oaep, priv).decode()}'")
     return found_text == secret, found_oaep is None
 
 
@@ -71,9 +71,9 @@ def demo_encrypt_and_sign_leak(keysize=1024, verbose=True):
     secret = "BAN 1000 CO PHIEU"
     oaep_encrypt(secret, b_pub)                           # nội dung mã hóa đúng chuẩn OAEP...
     s = sign_message(secret, a_priv)                      # ...nhưng chữ ký gửi kèm ở dạng rõ
-    say("[1] Alice gửi Bob: OAEP-Encrypt(M) || Sign(M)  (ký SONG SONG mã hóa)")
+    say("[1] Thu Trang gửi Thu Thủy: OAEP-Encrypt(M) || Sign(M)  (ký SONG SONG mã hóa)")
     found = attack_encrypt_and_sign_leak(s, a_pub, candidates)
-    say(f"[2] Eve không giải mã được C, nhưng kiểm tra chữ ký với từng lệnh có thể -> M = '{found}'")
+    say(f"[2] Mai Phương không giải mã được C, nhưng kiểm tra chữ ký với từng lệnh có thể -> M = '{found}'")
     say("[!] Phòng chống: KÝ RỒI MÃ HÓA cả chữ ký (core/secure_message.seal) — chữ ký nằm trong bản mã.")
     return found == secret
 
@@ -99,10 +99,10 @@ def demo_hastad(keysize=1024, verbose=True):
     m = bytes_to_int(secret.encode())
     pubs = [generate_keypair(keysize=keysize, e=3)[1] for _ in range(3)]
     cs = [textbook_encrypt(m, pub) for pub in pubs]
-    say("[1] Alice gửi CÙNG một bí mật cho 3 người, mỗi người dùng e = 3, RSA sách giáo khoa")
+    say("[1] Thu Trang gửi CÙNG một bí mật cho 3 người, mỗi người dùng e = 3, RSA sách giáo khoa")
     rec = attack_hastad_broadcast(cs, [p[1] for p in pubs])
     text = int_to_bytes(rec, (rec.bit_length() + 7) // 8).decode() if rec else None
-    say(f"[2] Eve nghe lén 3 bản mã, dùng CRT + căn bậc ba -> '{text}' (không cần khóa riêng nào)")
+    say(f"[2] Mai Phương nghe lén 3 bản mã, dùng CRT + căn bậc ba -> '{text}' (không cần khóa riêng nào)")
     oaep_cs = [bytes_to_int(oaep_encrypt(secret, pub)) for pub in pubs]
     rec2 = attack_hastad_broadcast(oaep_cs, [p[1] for p in pubs])
     say(f"[3] Với OAEP mỗi bản rõ đã đệm ngẫu nhiên khác nhau -> tấn công trả về {rec2!r}")
@@ -112,22 +112,22 @@ def demo_hastad(keysize=1024, verbose=True):
 # 4. Dùng chung khóa ký và giải mã -----------------------------------
 def demo_same_key_sign_decrypt(keysize=512, verbose=True):
     """
-    Alice dùng MỘT cặp khóa vừa để nhận thư mật vừa để ký (dịch vụ ký RSA thô).
-    Eve chặn được C = M^e. Eve "làm mù" C' = C * r^e, nhờ Alice ký C' -> S = C'^d = M*r -> M = S/r.
+    Thu Trang dùng MỘT cặp khóa vừa để nhận thư mật vừa để ký (dịch vụ ký RSA thô).
+    Mai Phương chặn được C = M^e. Mai Phương "làm mù" C' = C * r^e, nhờ Thu Trang ký C' -> S = C'^d = M*r -> M = S/r.
     """
     say = _say(verbose)
     priv, pub = generate_keypair(keysize=keysize)
     e, n = pub
     secret = bytes_to_int("Ma OTP: 403912".encode())
     c = mod_exp(secret, e, n)
-    say("[1] Bob gửi Alice bản mã C (RSA thô) — Eve chặn được C nhưng không giải được")
+    say("[1] Thu Thủy gửi Thu Trang bản mã C (RSA thô) — Mai Phương chặn được C nhưng không giải được")
     r = 1234567
     c_blind = (c * mod_exp(r, e, n)) % n
-    say("[2] Eve gửi C' = C * r^e mod N cho Alice, nhờ 'ký xác nhận' (C' trông như số ngẫu nhiên)")
-    s = mod_exp(c_blind, priv[0], n)                       # Alice ký bằng CHÍNH khóa giải mã
+    say("[2] Mai Phương gửi C' = C * r^e mod N cho Thu Trang, nhờ 'ký xác nhận' (C' trông như số ngẫu nhiên)")
+    s = mod_exp(c_blind, priv[0], n)                       # Thu Trang ký bằng CHÍNH khóa giải mã
     m = (s * mod_inverse(r, n)) % n
     text = int_to_bytes(m, (m.bit_length() + 7) // 8).decode(errors="replace")
-    say(f"[3] Eve tính S * r^-1 mod N = '{text}' — chữ ký đã giải mã giúp Eve")
+    say(f"[3] Mai Phương tính S * r^-1 mod N = '{text}' — chữ ký đã giải mã giúp Mai Phương")
     say("[!] Phòng chống: tách khóa ký / khóa mã hóa (key_usage trong chứng thư); ký trên băm có đệm.")
     return m == secret
 

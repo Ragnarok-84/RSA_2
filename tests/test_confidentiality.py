@@ -20,7 +20,7 @@ class TestSecureMessage(unittest.TestCase):
     def setUpClass(cls):
         cls.a_priv, cls.a_pub = generate_keypair(keysize=OAEP_KEYSIZE)
         cls.b_priv, cls.b_pub = generate_keypair(keysize=OAEP_KEYSIZE)
-        cls.keys = {"Alice": cls.a_pub}.get
+        cls.keys = {"Thu Trang": cls.a_pub}.get
 
     def test_keystream_is_involution(self):
         k, n, data = os.urandom(32), os.urandom(12), os.urandom(1000)
@@ -29,14 +29,14 @@ class TestSecureMessage(unittest.TestCase):
         self.assertEqual(sm.keystream_xor(k, n, ct), data)
 
     def test_seal_open(self):
-        env = sm.seal("Bí mật", "Alice", self.a_priv, "Bob", self.b_pub)
+        env = sm.seal("Bí mật", "Thu Trang", self.a_priv, "Thu Thủy", self.b_pub)
         self.assertNotIn("Bí mật".encode().hex(), str(env))
-        self.assertNotIn("Alice", str(env))                    # danh tính người gửi được giấu
-        r = sm.open_sealed(env, "Bob", self.b_priv, self.keys)
-        self.assertEqual((r["message"].decode(), r["sender"]), ("Bí mật", "Alice"))
+        self.assertNotIn("Thu Trang", str(env))                    # danh tính người gửi được giấu
+        r = sm.open_sealed(env, "Thu Thủy", self.b_priv, self.keys)
+        self.assertEqual((r["message"].decode(), r["sender"]), ("Bí mật", "Thu Trang"))
 
     def test_tamper_each_field(self):
-        env = sm.seal(b"x" * 100, "Alice", self.a_priv, "Bob", self.b_pub)
+        env = sm.seal(b"x" * 100, "Thu Trang", self.a_priv, "Thu Thủy", self.b_pub)
         for field in ("ct", "tag", "nonce", "ek"):
             bad = dict(env)
             raw = bytearray(bad[field].encode())
@@ -44,24 +44,24 @@ class TestSecureMessage(unittest.TestCase):
             raw[5] = ord("0") if raw[5] != ord("0") else ord("1")
             bad[field] = raw.decode()
             with self.assertRaises(sm.SecureMessageError, msg=field):
-                sm.open_sealed(bad, "Bob", self.b_priv, self.keys)
+                sm.open_sealed(bad, "Thu Thủy", self.b_priv, self.keys)
 
     def test_wrong_recipient_and_forwarding(self):
         c_priv, c_pub = generate_keypair(keysize=OAEP_KEYSIZE)
-        env = sm.seal(b"cho Bob", "Alice", self.a_priv, "Bob", self.b_pub)
+        env = sm.seal("cho Thu Thủy".encode(), "Thu Trang", self.a_priv, "Thu Thủy", self.b_pub)
         with self.assertRaises(sm.SecureMessageError):
-            sm.open_sealed(env, "Charlie", c_priv, self.keys)
-        fwd = sm.encrypt_for(sm.decrypt_envelope(env, self.b_priv), "Charlie", c_pub)
+            sm.open_sealed(env, "Tuyết Linh", c_priv, self.keys)
+        fwd = sm.encrypt_for(sm.decrypt_envelope(env, self.b_priv), "Tuyết Linh", c_pub)
         with self.assertRaisesRegex(sm.SecureMessageError, "chuyển tiếp"):
-            sm.open_sealed(fwd, "Charlie", c_priv, self.keys)
+            sm.open_sealed(fwd, "Tuyết Linh", c_priv, self.keys)
 
     def test_impersonation(self):
         e_priv, _ = generate_keypair(keysize=OAEP_KEYSIZE)
-        env = sm.seal(b"gia", "Alice", e_priv, "Bob", self.b_pub)
+        env = sm.seal(b"gia", "Thu Trang", e_priv, "Thu Thủy", self.b_pub)
         with self.assertRaisesRegex(sm.SecureMessageError, "KHÔNG hợp lệ"):
-            sm.open_sealed(env, "Bob", self.b_priv, self.keys)
+            sm.open_sealed(env, "Thu Thủy", self.b_priv, self.keys)
         with self.assertRaises(sm.SecureMessageError):          # người gửi không có trong danh bạ tin cậy
-            sm.open_sealed(sm.seal(b"x", "Mallory", e_priv, "Bob", self.b_pub), "Bob", self.b_priv, self.keys)
+            sm.open_sealed(sm.seal(b"x", "Mallory", e_priv, "Thu Thủy", self.b_pub), "Thu Thủy", self.b_priv, self.keys)
 
 
 class TestRealFiles(unittest.TestCase):
@@ -73,8 +73,8 @@ class TestRealFiles(unittest.TestCase):
             r = file_signer.demo_sign_file(path=path, keysize=KEYSIZE, workdir=tmp, verbose=False)
             self.assertTrue(r["valid_original"])
             self.assertFalse(r["valid_tampered"])
-            priv = file_signer.load_private_key(os.path.join(tmp, "alice.private.json"))
-            pub = file_signer.load_public_key(os.path.join(tmp, "alice.public.json"))
+            priv = file_signer.load_private_key(os.path.join(tmp, "thutrang.private.json"))
+            pub = file_signer.load_public_key(os.path.join(tmp, "thutrang.public.json"))
             self.assertEqual(priv[1], pub[1])
             self.assertTrue(file_signer.verify_file(path, pub, r["sig_path"])[0])
 
@@ -86,7 +86,7 @@ class TestRealFiles(unittest.TestCase):
             r = file_signer.demo_seal_file(path=path, keysize=OAEP_KEYSIZE, workdir=tmp, verbose=False)
             self.assertTrue(r["restored_equal"])
             self.assertTrue(r["eve_blocked"])
-            self.assertEqual(r["sender"], "Alice")
+            self.assertEqual(r["sender"], "Thu Trang")
 
     def test_password_protected_private_key(self):
         priv, pub = generate_keypair(keysize=KEYSIZE)

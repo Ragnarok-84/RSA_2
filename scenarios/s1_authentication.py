@@ -2,7 +2,7 @@
 scenarios/s1_authentication.py
 [Báo cáo 4.2, 4.7, 6.5]
 Kịch bản S1: Xác thực danh tính người dùng (Authentication) bằng Thách - Đáp (Challenge-Response)
-và chữ ký số: Server gửi nonce ngẫu nhiên, Alice ký nonce, Server kiểm tra bằng khóa trong chứng thư.
+và chữ ký số: Server gửi nonce ngẫu nhiên, Thu Trang ký nonce, Server kiểm tra bằng khóa trong chứng thư.
 """
 import os
 import sys
@@ -45,32 +45,32 @@ def run_scenario_s1(keysize=1024, verbose=True):
 
     ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
     alice_priv, alice_pub = generate_keypair(keysize=keysize)
-    alice_cert = ca.issue_certificate("Alice", alice_pub)
+    alice_cert = ca.issue_certificate("Thu Trang", alice_pub)
     server = AuthServer(ca.certificate, ca.crl)
 
-    nonce = server.challenge("Alice")
+    nonce = server.challenge("Thu Trang")
     say(f"[1] Server gửi chuỗi thử thách (nonce ngẫu nhiên): '{nonce}'")
     sig = sign_message(nonce, alice_priv)
-    say(f"[2] Alice ký nonce bằng khóa riêng: S = {str(sig)[:30]}...")
+    say(f"[2] Thu Trang ký nonce bằng khóa riêng: S = {str(sig)[:30]}...")
     ok, msg = server.respond(alice_cert, nonce, sig)
     say(f"[3] Server kiểm tra chứng thư + chữ ký: {msg}")
 
-    # Eve không có khóa riêng của Alice, ký bằng khóa của mình
+    # Mai Phương không có khóa riêng của Thu Trang, ký bằng khóa của mình
     eve_priv, eve_pub = generate_keypair(keysize=keysize)
-    nonce2 = server.challenge("Alice")
+    nonce2 = server.challenge("Thu Trang")
     fake_ok, fake_msg = server.respond(alice_cert, nonce2, sign_message(nonce2, eve_priv))
-    say(f"[4] Eve mạo danh Alice, ký bằng khóa của Eve: {'chấp nhận' if fake_ok else 'TỪ CHỐI'} ({fake_msg})")
+    say(f"[4] Mai Phương mạo danh Thu Trang, ký bằng khóa của Mai Phương: {'chấp nhận' if fake_ok else 'TỪ CHỐI'} ({fake_msg})")
 
-    # Eve tự tạo chứng thư "Alice" bằng CA của mình
+    # Mai Phương tự tạo chứng thư "Thu Trang" bằng CA của mình
     eve_ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
-    nonce3 = server.challenge("Alice")
-    cert_ok, cert_msg = server.respond(eve_ca.issue_certificate("Alice", eve_pub), nonce3,
+    nonce3 = server.challenge("Thu Trang")
+    cert_ok, cert_msg = server.respond(eve_ca.issue_certificate("Thu Trang", eve_pub), nonce3,
                                        sign_message(nonce3, eve_priv))
-    say(f"[5] Eve dùng chứng thư 'Alice' do CA giả cấp: {'chấp nhận' if cert_ok else 'TỪ CHỐI'} ({cert_msg})")
+    say(f"[5] Mai Phương dùng chứng thư 'Thu Trang' do CA giả cấp: {'chấp nhận' if cert_ok else 'TỪ CHỐI'} ({cert_msg})")
     say("    (Tấn công phát lại gói (nonce, S) cũ: xem kịch bản S4)")
 
     success = ok and not fake_ok and not cert_ok
-    say("[SUCCESS] Chỉ người giữ khóa riêng của Alice mới xác thực được." if success else "[FAILED]")
+    say("[SUCCESS] Chỉ người giữ khóa riêng của Thu Trang mới xác thực được." if success else "[FAILED]")
     return success
 
 

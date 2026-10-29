@@ -5,11 +5,11 @@
 #   - Ký rồi mã hóa tệp -> <tệp>.enc.json ; giải mã + kiểm tra chữ ký
 #
 # Dòng lệnh:
-#   python demo/file_signer.py keygen --name alice --bits 2048 [--usage signature|encryption] [--password]
-#   python demo/file_signer.py sign   <tệp> --key alice.private.json
-#   python demo/file_signer.py verify <tệp> --pub alice.public.json [--sig <tệp>.sig.json]
-#   python demo/file_signer.py seal   <tệp> --key alice.private.json --to bob_enc.public.json
-#   python demo/file_signer.py open   <tệp>.enc.json --key bob_enc.private.json --sender alice.public.json --out thu_muc
+#   python demo/file_signer.py keygen --name thutrang --bits 2048 [--usage signature|encryption] [--password]
+#   python demo/file_signer.py sign   <tệp> --key thutrang.private.json
+#   python demo/file_signer.py verify <tệp> --pub thutrang.public.json [--sig <tệp>.sig.json]
+#   python demo/file_signer.py seal   <tệp> --key thutrang.private.json --to thuthuy_enc.public.json
+#   python demo/file_signer.py open   <tệp>.enc.json --key thuthuy_enc.private.json --sender thutrang.public.json --out thu_muc
 #   python demo/file_signer.py demo
 import argparse
 import getpass
@@ -170,10 +170,10 @@ def demo_sign_file(path=None, keysize=1024, workdir=None, verbose=True):
     os.makedirs(workdir, exist_ok=True)
     say(f"[1] Tệp: {path} ({os.path.getsize(path):,} byte)")
     priv, pub = generate_keypair(keysize=keysize)
-    save_keypair("alice", priv, pub, workdir)
-    say(f"[2] Sinh khóa {keysize} bit, lưu alice.private.json / alice.public.json vào {workdir}")
+    save_keypair("thutrang", priv, pub, workdir)
+    say(f"[2] Sinh khóa {keysize} bit, lưu thutrang.private.json / thutrang.public.json vào {workdir}")
     t = time.perf_counter()
-    sig_path, sig = sign_file(path, priv, "Alice", os.path.join(workdir, os.path.basename(path) + ".sig.json"))
+    sig_path, sig = sign_file(path, priv, "Thu Trang", os.path.join(workdir, os.path.basename(path) + ".sig.json"))
     say(f"[3] Ký tệp ({time.perf_counter() - t:.2f}s): SHA-256 = {sig['sha256']}")
     say(f"    Chữ ký lưu tại {sig_path}")
     ok, why = verify_file(path, pub, sig_path)
@@ -192,25 +192,25 @@ def demo_seal_file(path=None, keysize=1024, workdir=None, verbose=True):
     a_priv, a_pub = generate_keypair(keysize=keysize)
     b_priv, b_pub = generate_keypair(keysize=keysize)
     e_priv, _ = generate_keypair(keysize=keysize)
-    say(f"[1] Alice ký rồi mã hóa tệp {os.path.basename(path)} ({os.path.getsize(path):,} byte) gửi Bob")
+    say(f"[1] Thu Trang ký rồi mã hóa tệp {os.path.basename(path)} ({os.path.getsize(path):,} byte) gửi Thu Thủy")
     t = time.perf_counter()
-    enc = seal_file(path, "Alice", a_priv, "Bob", b_pub, os.path.join(workdir, os.path.basename(path) + ".enc.json"))
+    enc = seal_file(path, "Thu Trang", a_priv, "Thu Thủy", b_pub, os.path.join(workdir, os.path.basename(path) + ".enc.json"))
     t_seal = time.perf_counter() - t
     say(f"    -> {enc} ({os.path.getsize(enc):,} byte, {t_seal:.2f}s)")
     with open(enc, encoding="utf-8") as f:
-        say(f"    Nội dung Eve thấy: {f.read(120)}...")
+        say(f"    Nội dung Mai Phương thấy: {f.read(120)}...")
     try:
-        open_file(enc, "Bob", e_priv, {"Alice": a_pub}, os.path.join(workdir, "eve"))
+        open_file(enc, "Thu Thủy", e_priv, {"Thu Trang": a_pub}, os.path.join(workdir, "maiphuong"))
         eve_blocked = False
     except sm.SecureMessageError as err:
         eve_blocked = True
-        say(f"[2] Eve mở bằng khóa của mình: {err.reason}")
+        say(f"[2] Mai Phương mở bằng khóa của mình: {err.reason}")
     t = time.perf_counter()
-    out, res = open_file(enc, "Bob", b_priv, {"Alice": a_pub}, os.path.join(workdir, "bob_nhan"))
+    out, res = open_file(enc, "Thu Thủy", b_priv, {"Thu Trang": a_pub}, os.path.join(workdir, "thuthuy_nhan"))
     t_open = time.perf_counter() - t
     with open(path, "rb") as f1, open(out, "rb") as f2:
         same = f1.read() == f2.read()
-    say(f"[3] Bob giải mã ({t_open:.2f}s) -> {out}")
+    say(f"[3] Thu Thủy giải mã ({t_open:.2f}s) -> {out}")
     say(f"    Người gửi đã xác minh: {res['sender']} | Giống hệt tệp gốc: {'CÓ' if same else 'KHÔNG'}")
     return {"restored_equal": same, "eve_blocked": eve_blocked, "sender": res["sender"],
             "seal_seconds": t_seal, "open_seconds": t_open, "output": out}

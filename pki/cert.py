@@ -147,16 +147,16 @@ def run_demo(keysize=1024, verbose=True):
     r["root"], msg = verify_certificate(ca.certificate, ca.certificate)
     say("  Kiểm tra chứng thư gốc:", msg)
 
-    say("\n=== 2. Alice xin cấp chứng thư ===")
+    say("\n=== 2. Thu Trang xin cấp chứng thư ===")
     alice_private, alice_public = generate_keypair(keysize=keysize)
-    alice_cert = ca.issue_certificate("Alice", alice_public, days=365)
+    alice_cert = ca.issue_certificate("Thu Trang", alice_public, days=365)
     print_certificate(alice_cert, say)
 
-    say("\n=== 3. Bob xác thực chứng thư của Alice ===")
+    say("\n=== 3. Thu Thủy xác thực chứng thư của Thu Trang ===")
     r["alice_valid"], msg = verify_certificate(alice_cert, ca.certificate, ca.crl, usage="signature")
     say("  Kết quả:", msg)
 
-    say("\n=== 4. Alice ký tài liệu, Bob kiểm tra bằng khóa trong chứng thư ===")
+    say("\n=== 4. Thu Trang ký tài liệu, Thu Thủy kiểm tra bằng khóa trong chứng thư ===")
     document = "Hop dong mua ban so 01/2026"
     signature = sign_data(document, alice_private)
     r["doc_ok"] = verify_data(document, signature, alice_cert["public_key"])
@@ -173,12 +173,12 @@ def run_demo(keysize=1024, verbose=True):
 
     say("\n=== 6. CA giả mạo cùng tên cấp chứng thư ===")
     fake_ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
-    fake_cert = fake_ca.issue_certificate("Alice", mallory_public)
+    fake_cert = fake_ca.issue_certificate("Thu Trang", mallory_public)
     r["fake_ca"], msg = verify_certificate(fake_cert, ca.certificate, ca.crl)
     say("  Kết quả:", msg)
 
     say("\n=== 7. Chứng thư hết hạn ===")
-    old_cert = ca.issue_certificate("Charlie", alice_public, days=30,
+    old_cert = ca.issue_certificate("Tuyết Linh", alice_public, days=30,
                                     start=datetime.now() - timedelta(days=400))
     r["expired"], msg = verify_certificate(old_cert, ca.certificate, ca.crl)
     say("  Kết quả:", msg)
@@ -187,7 +187,7 @@ def run_demo(keysize=1024, verbose=True):
     r["wrong_usage"], msg = verify_certificate(alice_cert, ca.certificate, ca.crl, usage="encryption")
     say("  Kết quả:", msg)
 
-    say("\n=== 9. Thu hồi chứng thư của Alice ===")
+    say("\n=== 9. Thu hồi chứng thư của Thu Trang ===")
     ca.revoke(alice_cert["serial"])
     r["revoked"], msg = verify_certificate(alice_cert, ca.certificate, ca.crl)
     say("  Kết quả:", msg)
