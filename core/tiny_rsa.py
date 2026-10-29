@@ -48,7 +48,7 @@ class TinyRSA:
         if logger is not None and with_keygen:
             self.keygen_steps(logger)
         if logger is not None:
-            logger.head("KÝ (trang dùng khoá riêng d)")
+            logger.head("KÝ (Trang dùng khoá riêng d)")
         h = self.hash_value(message, logger)
         s = mod_pow(h, self.d, self.n, logger)
         if logger is not None:
@@ -59,7 +59,7 @@ class TinyRSA:
     def verify(self, message: bytes | int, s: int, logger: StepLogger | None = None) -> bool:
         """Kiểm tra: s^e mod n == h ?"""
         if logger is not None:
-            logger.head("KIỂM TRA (thuy dùng khoá công khai (n, e))")
+            logger.head("KIỂM TRA (Thủy dùng khoá công khai (n, e))")
         h = self.hash_value(message, logger)
         if not 0 <= s < self.n:
             if logger is not None:

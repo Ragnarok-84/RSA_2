@@ -3,8 +3,7 @@
 Các file test/required/test_r*.py gọi các hàm check_*() ở đây rồi `assert row.match`, nên dữ liệu và logic
 kiểm tra chỉ viết một lần. Đây là nơi (cùng test/) được phép dùng hashlib, cryptography và pow built-in để đối chiếu.
 
-    python -m test.report                       # in bảng ra console
-    python -m test.report --out docs/report/test_results.md [--slow]
+    python -m test.report [--slow]              # in bảng ra console
 """
 from __future__ import annotations
 
@@ -13,7 +12,6 @@ import hashlib
 import json
 import os
 import sys
-import time
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -40,7 +38,6 @@ SIGNATURE_CASES = (
     "Sửa 1 bít chữ ký → từ chối",
     "Dùng sai khoá công khai → từ chối",
     "PSS: sửa 1 bít thông điệp → từ chối",
-    "Ký CRT = ký không CRT",
 )
 
 
@@ -145,9 +142,8 @@ def check_signature_cases(pub: RSAPublicKey, priv: RSAPrivateKey,
         sg.verify(vi, bytes(flipped_sig), pub),
         sg.verify(vi, sig_vi, wrong_pub),
         sg.verify(bytes(flipped_msg), pss_vi, pub, "pss"),
-        sg.sign(vi, priv, use_crt=True) == sg.sign(vi, priv, use_crt=False),
     ]
-    expected = [True] * 6 + [False] * 4 + [True]
+    expected = [True] * 6 + [False] * 4
     return [_row(g, c, ok, exp, src) for c, ok, exp in zip(SIGNATURE_CASES, results, expected)]
 
 
@@ -170,13 +166,16 @@ def check_rfc8017_vectors() -> list[CheckRow]:
     return rows
 
 
-def _crypto_key(priv: RSAPrivateKey):
+def _crypto_keypair(bits: int) -> tuple[object, RSAPrivateKey, RSAPublicKey]:
     from cryptography.hazmat.primitives.asymmetric import rsa
-    return rsa.RSAPrivateNumbers(priv.p, priv.q, priv.d, priv.dP, priv.dQ, priv.qInv,
-                                 rsa.RSAPublicNumbers(priv.e, priv.n)).private_key()
+    key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+    numbers = key.private_numbers()
+    pub_numbers = numbers.public_numbers
+    priv = RSAPrivateKey(pub_numbers.n, pub_numbers.e, numbers.d, numbers.p, numbers.q)
+    return key, priv, RSAPublicKey(pub_numbers.n, pub_numbers.e)
 
 
-def check_cross_library(pub: RSAPublicKey, priv: RSAPrivateKey) -> list[CheckRow]:
+def check_cross_library(bits: int = 2048) -> list[CheckRow]:
     g, src = "Đối chiếu thư viện", "cryptography"
     try:
         from cryptography.exceptions import InvalidSignature
@@ -184,7 +183,7 @@ def check_cross_library(pub: RSAPublicKey, priv: RSAPrivateKey) -> list[CheckRow
         from cryptography.hazmat.primitives.asymmetric import padding
     except ImportError:
         return [CheckRow(g, "Thư viện cryptography", "-", "chưa cài (pip install cryptography)", src, False)]
-    key = _crypto_key(priv)
+    key, reference_priv, reference_pub = _crypto_keypair(bits)
     pss = padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32)
 
     def lib_verifies(sig: bytes, msg: bytes, pad) -> bool:
@@ -196,21 +195,21 @@ def check_cross_library(pub: RSAPublicKey, priv: RSAPrivateKey) -> list[CheckRow
 
     contract = (ROOT / "sample" / "messages" / "contract.txt")
     msg = contract.read_bytes() if contract.is_file() else "Hợp đồng mẫu".encode()
-    bits = pub.n.bit_length()
-    ours = sg.sign(msg, priv)
+    bits = reference_pub.n.bit_length()
+    ours = sg.sign(msg, reference_priv)
     theirs = key.sign(msg, padding.PKCS1v15(), hashes.SHA256())
-    ours_pss = sg.sign(msg, priv, "pss")
+    ours_pss = sg.sign(msg, reference_priv, "pss")
     theirs_pss = key.sign(msg, pss, hashes.SHA256())
     return [
         _row(g, f"SHA-256 contract.txt", sha256(msg).hex(), hashlib.sha256(msg).hexdigest(), "hashlib"),
         _row(g, f"PKCS#1 v1.5 ký contract.txt ({bits}-bit): trùng từng byte", ours.hex(), theirs.hex(), src),
         _row(g, "PKCS#1 v1.5: cryptography kiểm tra chữ ký của nhóm", lib_verifies(ours, msg, padding.PKCS1v15()),
              True, src),
-        _row(g, "PKCS#1 v1.5: nhóm kiểm tra chữ ký của cryptography", sg.verify(msg, theirs, pub), True, src),
+        _row(g, "PKCS#1 v1.5: nhóm kiểm tra chữ ký của cryptography", sg.verify(msg, theirs, reference_pub), True, src),
         _row(g, "PSS: cryptography kiểm tra chữ ký của nhóm", lib_verifies(ours_pss, msg, pss), True, src),
-        _row(g, "PSS: nhóm kiểm tra chữ ký của cryptography", sg.verify(msg, theirs_pss, pub, "pss"), True, src),
+        _row(g, "PSS: nhóm kiểm tra chữ ký của cryptography", sg.verify(msg, theirs_pss, reference_pub, "pss"), True, src),
         _row(g, "PSS: hai lần ký cho hai chữ ký khác nhau (salt ngẫu nhiên)",
-             ours_pss != sg.sign(msg, priv, "pss"), True, "RFC 8017"),
+             ours_pss != sg.sign(msg, reference_priv, "pss"), True, "RFC 8017"),
     ]
 
 
@@ -218,57 +217,27 @@ def check_cross_library(pub: RSAPublicKey, priv: RSAPrivateKey) -> list[CheckRow
 def build_report(include_slow: bool = False, bits: int = 2048) -> list[CheckRow]:
     pub, priv = shared_keypair(bits)
     return (check_tiny_slide() + check_sha256_nist(include_slow) + check_signature_cases(pub, priv)
-            + check_rfc8017_vectors() + check_cross_library(pub, priv))
-
-
-def summary(rows: list[CheckRow]) -> str:
-    return f"{sum(r.match for r in rows)}/{len(rows)} ca khớp"
-
-
-def to_markdown(rows: list[CheckRow]) -> str:
-    lines = [
-        "# Kết quả kiểm thử đối chiếu",
-        "",
-        f"Sinh tự động bởi `python -m test.report` lúc {time.strftime('%Y-%m-%d %H:%M:%S')}. {summary(rows)}.",
-        "",
-        "| Nhóm | Ca kiểm thử | Ours | Reference | Nguồn | Khớp |",
-        "|---|---|---|---|---|---|",
-    ]
-    esc = lambda s: s.replace("|", "\\|")
-    for r in rows:
-        lines.append(f"| {esc(r.group)} | {esc(r.case)} | `{esc(r.ours)}` | `{esc(r.reference)}` | {r.source} | "
-                     f"{'✅' if r.match else '❌'} |")
-    return "\n".join(lines) + "\n"
+            + check_rfc8017_vectors() + check_cross_library(pub.n.bit_length()))
 
 
 def to_console(rows: list[CheckRow]) -> str:
-    head = ("Nhóm", "Ca kiểm thử", "Ours", "Reference", "Nguồn", "Khớp")
-    cells = [head] + [(r.group, r.case, r.ours, r.reference, r.source, "OK" if r.match else "LỆCH") for r in rows]
+    head = ("Nhóm", "Ca kiểm thử", "Kết quả", "Đối chiếu", "Nguồn")
+    cells = [head] + [(r.group, r.case, r.ours, r.reference, r.source) for r in rows]
     widths = [min(max(len(c[i]) for c in cells), 48) for i in range(len(head))]
     fit = lambda s, w: s if len(s) <= w else s[:w - 1] + "…"
     lines = [" | ".join(fit(c, w).ljust(w) for c, w in zip(row, widths)) for row in cells]
     lines.insert(1, "-+-".join("-" * w for w in widths))
-    return "\n".join(lines) + f"\n\n{summary(rows)}\n"
-
-
-def write_markdown(rows: list[CheckRow], out: Path) -> Path:
-    out = Path(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(to_markdown(rows).encode("utf-8"))
-    return out
+    return "\n".join(lines) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Bảng đối chiếu kết quả kiểm thử")
-    ap.add_argument("--out", type=Path, help="ghi Markdown, ví dụ docs/report/test_results.md")
     ap.add_argument("--slow", action="store_true", help="gồm ca chậm (SHA-256 của 1 000 000 ký tự 'a')")
     args = ap.parse_args(argv)
     rows = build_report(include_slow=args.slow)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     print(to_console(rows))
-    if args.out:
-        print(f"Đã ghi {write_markdown(rows, args.out)}")
     return 0 if all(r.match for r in rows) else 1
 
 

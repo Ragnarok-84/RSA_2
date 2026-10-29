@@ -8,6 +8,6 @@ flowchart LR
     E -- PSS --> P2["salt ngẫu nhiên → H' = SHA256(0⁸ ‖ h ‖ salt)<br/>EM = maskedDB ‖ H' ‖ BC"]
     P1 --> I["m = OS2IP(EM)"]
     P2 --> I
-    I --> S["RSASP1 (CRT):<br/>s_p = m^dP mod p, s_q = m^dQ mod q<br/>s = s_q + q·(qInv·(s_p − s_q) mod p)"]
+    I --> S["RSASP1: s = m^d mod n"]
     S --> O["S = I2OSP(s, k)<br/>→ *.sig.json"]
 ```

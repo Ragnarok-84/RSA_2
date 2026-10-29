@@ -94,14 +94,14 @@ def _encode(message_hash: bytes, n: int, scheme: str, salt: bytes | None) -> byt
         raise SignatureError(str(err)) from err
 
 
-def sign_hash(message_hash: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v15", *, use_crt: bool = True,
+def sign_hash(message_hash: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v15", *,
               salt: bytes | None = None, logger: StepLogger | None = None) -> bytes:
     """Ký trên giá trị băm SHA-256 có sẵn (dùng khi băm tệp lớn theo khối). Trả S dài đúng k byte."""
     _check_scheme(scheme)
     k = byte_len(priv.n)
     em = _encode(message_hash, priv.n, scheme, salt)
     m = os2ip(em)
-    s = rsasp1(priv, m, use_crt=use_crt)
+    s = rsasp1(priv, m)
     sig = i2osp(s, k)
     if logger is not None:
         if scheme == "pkcs1v15":
@@ -109,18 +109,18 @@ def sign_hash(message_hash: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v
         else:
             logger.log("Mã hoá EM (PSS, salt ngẫu nhiên)", r"EM = maskedDB \| H \| \mathrm{BC}", em.hex())
         logger.log("Số đại diện", r"m = \mathrm{OS2IP}(EM)", short_hex(m))
-        logger.log("Ký" + (" (CRT)" if use_crt else ""), r"s = m^{d} \mathrm{mod}\ n", short_hex(s))
+        logger.log("Ký", r"s = m^{d} \mathrm{mod}\ n", short_hex(s))
         logger.ok(f"Chữ ký S ({k} byte)", sig.hex())
     return sig
 
 
-def sign(message: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v15", *, use_crt: bool = True,
+def sign(message: bytes, priv: RSAPrivateKey, scheme: Scheme = "pkcs1v15", *,
          logger: StepLogger | None = None) -> bytes:
     """Ký thông điệp: S = RSASP1(d, OS2IP(Encode(SHA256(M), k)))."""
     h = sha256(message)
     if logger is not None:
         logger.log("Băm thông điệp", r"h = \mathrm{SHA256}(M)", h.hex())
-    return sign_hash(h, priv, scheme, use_crt=use_crt, logger=logger)
+    return sign_hash(h, priv, scheme, logger=logger)
 
 
 def verify_hash(message_hash: bytes, signature: bytes, pub: RSAPublicKey, scheme: Scheme = "pkcs1v15",
@@ -194,4 +194,4 @@ def verify_file(path: Path, bundle: SignatureBundle, pub: RSAPublicKey,
 
 def sign_raw_no_hash(m: int, priv: RSAPrivateKey) -> int:
     """⚠ Ký trực tiếp số m, KHÔNG băm, KHÔNG đệm: s = m^d mod n. CHỈ dùng cho attacks/a1_no_hash_forgery.py."""
-    return rsasp1(priv, m, use_crt=False)
+    return rsasp1(priv, m)

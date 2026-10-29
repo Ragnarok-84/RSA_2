@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from core.utils import constant_time_eq
 
-# DER của DigestInfo cho SHA-256 (RFC 8017 §9.2, ghi chú 1)
+# DER của DigestInfo cho SHA-256 
 DIGEST_INFO_SHA256 = bytes.fromhex("3031300d060960864801650304020105000420")
 HASH_LEN = 32
 MIN_PS_LEN = 8
 
 
 def encode(message_hash: bytes, em_len: int) -> bytes:
-    """EMSA-PKCS1-V1_5-ENCODE với giá trị băm SHA-256 đã tính sẵn."""
+    # EMSA-PKCS1-V1_5-ENCODE với giá trị băm SHA-256 đã tính sẵn
     if len(message_hash) != HASH_LEN:
         raise ValueError("Giá trị băm SHA-256 phải dài 32 byte")
     t = DIGEST_INFO_SHA256 + message_hash
@@ -21,7 +21,7 @@ def encode(message_hash: bytes, em_len: int) -> bytes:
 
 
 def verify_strict(em: bytes, message_hash: bytes) -> bool:
-    """Cách kiểm tra ĐÚNG: dựng lại EM từ giá trị băm rồi so sánh TOÀN BỘ (RFC 8017 §8.2.2 bước 3–4)."""
+    # Cách kiểm tra ĐÚNG: dựng lại EM từ giá trị băm rồi so sánh TOÀN BỘ 
     try:
         expected = encode(message_hash, len(em))
     except ValueError:
@@ -30,12 +30,8 @@ def verify_strict(em: bytes, message_hash: bytes) -> bool:
 
 
 def verify_sloppy(em: bytes, message_hash: bytes) -> bool:
-    """⚠ BỘ KIỂM TRA CÓ LỖI CỐ Ý — chỉ dùng cho attacks/a4_small_e_attack.py.
-
-    Mô phỏng lỗi của nhiều thư viện trước 2006 (Bleichenbacher, CRYPTO 2006 rump session):
-    chỉ dò 00 01 FF… 00 DigestInfo H rồi dừng, KHÔNG kiểm tra H nằm sát cuối EM và không kiểm tra
-    độ dài PS. Phần "rác" phía sau H cho phép kẻ tấn công tìm căn bậc ba khi e = 3.
-    """
+    # BỘ KIỂM TRA CÓ LỖI CỐ Ý — chỉ dùng cho attacks/a4_small_e_attack.py.
+    # Mô phỏng lỗi của nhiều thư viện trước 2006 (Bleichenbacher, CRYPTO 2006 rump session)
     if em[:2] != b"\x00\x01":
         return False
     i = 2

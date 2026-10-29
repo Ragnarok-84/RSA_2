@@ -1,4 +1,4 @@
-"""Mỗi tấn công a1 → a9: success == True ở cấu hình yếu, success == False khi bật phòng chống."""
+"""Mỗi tấn công a1 → a8: success == True ở cấu hình yếu, success == False khi bật phòng chống."""
 import pytest
 
 from attacks import REGISTRY, load
@@ -22,7 +22,7 @@ def _run(name: str, defended: bool, **kw):
 
 def test_registry_order():
     assert [m for m, _ in REGISTRY] == [f"a{i}_" + m.split("_", 1)[1] for i, (m, _) in enumerate(REGISTRY, 1)]
-    assert len(REGISTRY) == 9
+    assert len(REGISTRY) == 8
 
 
 @pytest.mark.parametrize("name", [m for m, _ in REGISTRY])
@@ -40,11 +40,6 @@ def test_attack_fails_when_defended(name):
 def test_a3_hash_collision():
     r, _ = _run("a3_hash_collision", False)
     assert r.details["hashes"] < 2 ** 12
-
-
-def test_a6_crt_fault_attack_formula():
-    _, log = _run("a6_crt_fault_attack", False)
-    assert any(s.formula_latex and r"\gcd(s'^{\,e} - m" in s.formula_latex for s in log)
 
 
 @pytest.mark.slow

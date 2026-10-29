@@ -1,32 +1,9 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Iterator, Sequence
 
 LEVELS = ("", "head", "ok", "bad", "dim")
-
-_LATEX_TO_PLAIN = (
-    (r"\varphi", "φ"), (r"\mathrm{mod}", "mod"), (r"\bmod", "mod"), (r"\cdot", "·"), (r"\times", "×"),
-    (r"\equiv", "≡"), (r"\gcd", "gcd"), (r"\Rightarrow", "⇒"), (r"\ne", "≠"), (r"\neq", "≠"), (r"\le", "≤"),
-    (r"\ge", "≥"), (r"\|", "‖"), (r"\oplus", "⊕"), (r"\lfloor", "⌊"), (r"\rfloor", "⌋"), (r"\to", "→"),
-    (r"\leftarrow", "←"), (r"\ldots", "…"), (r"\quad", "  "), (r"\,", " "), (r"\;", " "),
-)
-
-
-def latex_to_plain(latex: str) -> str:
-    """Chuyển công thức LaTeX đơn giản sang Unicode để in trên terminal."""
-    s = latex
-    for a, b in _LATEX_TO_PLAIN:
-        s = s.replace(a, b)
-    s = re.sub(r"\\mathrm\{([^}]*)\}", r"\1", s)
-    s = re.sub(r"\\text\{([^}]*)\}", r"\1", s)
-    s = re.sub(r"\\mathit\{([^}]*)\}", r"\1", s)
-    s = s.replace("^{-1}", "⁻¹")
-    s = re.sub(r"\^\{([^}]*)\}", r"^\1", s)
-    s = re.sub(r"_\{([^}]*)\}", r"_\1", s)
-    return s.replace("\\", "").replace("{", "").replace("}", "")
-
 
 @dataclass
 class Step:
@@ -67,11 +44,10 @@ class StepLogger:
     def log(self, title: str, formula: str | None = None, value: object = None, *,
             plain: str | None = None, level: str = "",
             table: tuple[Sequence[str], Sequence[Sequence[object]]] | None = None) -> Step:
-        """Ghi một bước. `formula` là LaTeX (không kèm dấu $); `plain` mặc định tự chuyển từ LaTeX."""
         if level not in LEVELS:
             raise ValueError(f"level phải thuộc {LEVELS}")
         if formula is not None and plain is None:
-            plain = latex_to_plain(formula)
+            plain = formula
         tbl = (tuple(table[0]), [tuple(r) for r in table[1]]) if table else None
         step = Step(title, formula, plain, "" if value is None else str(value), level, tbl)
         self.steps.append(step)

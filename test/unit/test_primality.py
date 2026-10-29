@@ -35,7 +35,7 @@ def test_generate_keypair(bits):
     pub, priv = generate_keypair(bits)
     assert pub.n.bit_length() == bits and priv.p != priv.q
     assert (priv.e * priv.d) % ((priv.p - 1) * (priv.q - 1)) == 1
-    assert priv.dP == priv.d % (priv.p - 1) and (priv.q * priv.qInv) % priv.p == 1
+    assert priv.p * priv.q == pub.n
     m = 123456789
     assert pow(pow(m, priv.d, pub.n), pub.e, pub.n) == m
 

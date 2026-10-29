@@ -6,9 +6,8 @@ from pathlib import Path
 from core.rsa_keygen import RSAPrivateKey, RSAPublicKey
 from core.signature import SignatureBundle
 
-PRIVATE_FIELDS = ("n", "e", "d", "p", "q", "dP", "dQ", "qInv")
-# Khóa riêng lưu dạng rõ; chỉ dùng các tệp này cho demo.
-DEMO_WARNING = "KHOÁ DEMO cho bài tập — KHÔNG dùng thật, tệp không được mã hoá"
+PRIVATE_FIELDS = ("n", "e", "d", "p", "q")
+DEMO_WARNING = "Khóa mặc định cho bài tập — KHÔNG dùng thật, tệp không được mã hoá"
 
 
 def _hex(x: int) -> str:

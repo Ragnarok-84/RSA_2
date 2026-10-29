@@ -15,7 +15,7 @@ class BenchmarkTab(QWidget):
         self.rows: list[BenchRow] = []
         lay = QVBoxLayout(self)
 
-        self.key_boxes = {b: QCheckBox(f"{b} bít") for b in KEY_SIZES}
+        self.key_boxes = {b: QCheckBox(f"{b} bit") for b in KEY_SIZES}
         self.data_boxes = {s: QCheckBox(fmt_size(s)) for s in DATA_SIZES}
         for b in (512, 1024, 2048):
             self.key_boxes[b].setChecked(True)
@@ -53,6 +53,6 @@ class BenchmarkTab(QWidget):
         for r in rows:
             i = self.table.rowCount()
             self.table.insertRow(i)
-            param = fmt_size(r.param) if r.kind == "hash" else f"{r.param} bít"
+            param = fmt_size(r.param) if r.kind == "hash" else f"{r.param} bit"
             for c, v in enumerate((KINDS[r.kind], param, f"{r.median_s * 1000:.2f} ms", str(r.repeats))):
                 self.table.setItem(i, c, QTableWidgetItem(v))

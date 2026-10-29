@@ -1,26 +1,22 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import os
 import statistics
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable
 
 from core.hash.sha256 import sha256
 from core.rsa_keygen import generate_keypair
 from core.signature import sign, verify
 from core.utils import Timer
-from demo import REPORT_DIR
 
 KEY_SIZES = (512, 1024, 2048, 3072)
 DATA_SIZES = (1 << 10, 10 << 10, 100 << 10, 1 << 20, 10 << 20)
 KINDS = {
     "keygen": "Sinh khoá",
-    "sign_crt": "Ký (CRT)",
-    "sign_nocrt": "Ký (không CRT)",
+    "sign": "Ký",
     "verify": "Kiểm tra",
     "hash": "Băm SHA-256",
 }
@@ -61,8 +57,7 @@ def run_benchmark(key_sizes=KEY_SIZES, data_sizes=DATA_SIZES, repeats: int = 3,
         pub, priv = generate_keypair(bits)
         sig = sign(msg, priv)
         say(f"Ký / kiểm tra với khoá {bits} bít…")
-        rows.append(BenchRow("sign_crt", bits, _median(lambda: sign(msg, priv, use_crt=True), repeats), repeats))
-        rows.append(BenchRow("sign_nocrt", bits, _median(lambda: sign(msg, priv, use_crt=False), repeats), repeats))
+        rows.append(BenchRow("sign", bits, _median(lambda: sign(msg, priv), repeats), repeats))
         rows.append(BenchRow("verify", bits, _median(lambda: verify(msg, sig, pub), repeats), repeats))
     for size in data_sizes:
         say(f"Băm {fmt_size(size)}…")
@@ -71,17 +66,6 @@ def run_benchmark(key_sizes=KEY_SIZES, data_sizes=DATA_SIZES, repeats: int = 3,
         rows.append(BenchRow("hash", size, _median(lambda: sha256(data), r), r))
     say("Xong")
     return rows
-
-
-def save_csv(rows: list[BenchRow], path: Path = REPORT_DIR / "benchmark.csv") -> Path:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["phep_do", "tham_so", "don_vi", "trung_vi_giay", "so_lan_lap"])
-        for r in rows:
-            w.writerow([r.kind, r.param, "byte" if r.kind == "hash" else "bit", f"{r.median_s:.6f}", r.repeats])
-    return path
 
 
 def to_console(rows: list[BenchRow]) -> str:
@@ -97,7 +81,6 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Benchmark hệ chữ ký RSA")
     ap.add_argument("--quick", action="store_true", help="khoá tới 2048 bít, dữ liệu tới 1 MB")
     ap.add_argument("--repeats", type=int, default=3)
-    ap.add_argument("--out", type=Path, default=REPORT_DIR / "benchmark.csv")
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -105,7 +88,6 @@ def main(argv: list[str] | None = None) -> int:
     data = DATA_SIZES[:4] if args.quick else DATA_SIZES
     rows = run_benchmark(keys, data, args.repeats, progress=lambda s: print("…", s, flush=True))
     print(to_console(rows))
-    print(f"\nĐã ghi {save_csv(rows, args.out)}")
     return 0
 
 

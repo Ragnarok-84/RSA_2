@@ -13,8 +13,8 @@ from demo.gui.widgets.step_view import StepView
 
 # Bảng ghép cặp kịch bản ↔ tấn công (thiết kế mục 3b)
 PAIRS = {
-    "s1_authentication": "a7", "s2_integrity_tamper": "a1, a2, a3, a4", "s3_non_repudiation_contract": "a8",
-    "s4_key_compromise": "a5, a6", "s5_hmac_vs_signature": "—", "s6_sign_then_encrypt": "a9",
+    "s1_authentication": "a6", "s2_integrity_tamper": "a1, a2, a3, a4", "s3_non_repudiation_contract": "a7",
+    "s4_key_compromise": "a5", "s5_hmac_vs_signature": "—", "s6_sign_then_encrypt": "a8",
 }
 
 

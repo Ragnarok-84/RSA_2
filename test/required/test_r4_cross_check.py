@@ -1,7 +1,7 @@
 """R4 — Đáp ứng yêu cầu: đối chiếu với thư viện chuẩn và in kết quả đối chiếu.
 
-- PKCS#1 v1.5: dựng khoá `cryptography` từ (n, e, d, p, q) của nhóm, ký cùng thông điệp → chữ ký giống hệt từng byte;
-  chữ ký của nhóm được `cryptography` chấp nhận và ngược lại.
+- PKCS#1 v1.5: dùng cùng khóa do `cryptography` sinh để ký bằng cả hai cài đặt → chữ ký giống hệt từng byte;
+  mỗi cài đặt kiểm tra được chữ ký của bên kia.
 - PSS (salt 32, MGF1-SHA256): kiểm tra chéo hai chiều.
 - Vector PKCS#1 v1.5 lưu sẵn (test/vectors/rsa_pkcs1_rfc8017.json) và DigestInfo theo RFC 8017.
 Bảng đầy đủ: python -m test.report (hoặc tab "Kiểm thử" trên GUI).
@@ -21,7 +21,7 @@ def test_rfc8017_vector(row):
 @pytest.fixture(scope="module")
 def cross_rows(keypair):
     pytest.importorskip("cryptography")
-    return check_cross_library(*keypair)
+    return check_cross_library(keypair[0].n.bit_length())
 
 
 def test_cross_library_all_match(cross_rows):
@@ -40,8 +40,10 @@ def test_pkcs1_byte_identical_many_messages(keypair, message):
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
+    from core.rsa_keygen import RSAPrivateKey
     from core.signature import sign
-    pub, priv = keypair
-    key = rsa.RSAPrivateNumbers(priv.p, priv.q, priv.d, priv.dP, priv.dQ, priv.qInv,
-                                rsa.RSAPublicNumbers(priv.e, priv.n)).private_key()
-    assert sign(message, priv) == key.sign(message, padding.PKCS1v15(), hashes.SHA256())
+    pub, _ = keypair
+    key = rsa.generate_private_key(public_exponent=65537, key_size=pub.n.bit_length())
+    numbers = key.private_numbers()
+    reference = RSAPrivateKey(numbers.public_numbers.n, numbers.public_numbers.e, numbers.d, numbers.p, numbers.q)
+    assert sign(message, reference) == key.sign(message, padding.PKCS1v15(), hashes.SHA256())

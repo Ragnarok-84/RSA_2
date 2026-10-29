@@ -4,7 +4,7 @@ from core.step_logger import StepLogger
 
 
 def gcd(a: int, b: int) -> int:
-    """Ước chung lớn nhất (Euclid): gcd(a, b) = gcd(b, a mod b)."""
+    # Tính ước chung lớn nhất
     a, b = abs(a), abs(b)
     while b:
         a, b = b, a % b
@@ -12,12 +12,7 @@ def gcd(a: int, b: int) -> int:
 
 
 def egcd(a: int, b: int, logger: StepLogger | None = None) -> tuple[int, int, int]:
-    """Euclid mở rộng dạng lặp: trả (d, x, y) với a·x + b·y = d = gcd(a, b).
-
-    Mỗi vòng (như bảng trong slide):
-        q = ⌊a / b⌋,  r = a − q·b,  x = x2 − q·x1,  y = y2 − q·y1
-    rồi dịch: a ← b, b ← r, x2 ← x1, x1 ← x, y2 ← y1, y1 ← y.
-    """
+    # Euclid mở rộng dạng lặp    
     a0, b0 = a, b
     x2, x1, y2, y1 = 1, 0, 0, 1
     rows: list[tuple[object, ...]] = [("", "", "", "", a, b, x2, x1, y2, y1)]
@@ -35,15 +30,12 @@ def egcd(a: int, b: int, logger: StepLogger | None = None) -> tuple[int, int, in
         logger.table(f"Euclid mở rộng trên ({a0}, {b0})",
                      ("q", "r", "x", "y", "a", "b", "x2", "x1", "y2", "y1"), rows,
                      formula=r"q = \lfloor a / b \rfloor,\; r = a - q b,\; x = x_2 - q x_1,\; y = y_2 - q y_1")
-        logger.log("Kết quả Euclid mở rộng", rf"{a0} \cdot ({x}) + {b0} \cdot ({y}) = {d}", f"(d, x, y) = ({d}, {x}, {y})")
+        logger.log("Kết quả Euclid mở rộng", f"{a0}*({x}) + {b0}*({y}) = {d}", f"(d, x, y) = ({d}, {x}, {y})")
     return d, x, y
 
 
 def mod_inverse(a: int, n: int, logger: StepLogger | None = None) -> int:
-    """Nghịch đảo modulo: a⁻¹ mod n qua Euclid mở rộng trên (n, a): n·x + a·y = 1 ⇒ a⁻¹ ≡ y (mod n).
-
-    ValueError nếu gcd(a, n) ≠ 1.
-    """
+    # Nghịch đảo modulo
     if n <= 0:
         raise ValueError("Modulo phải dương")
     d, _, y = egcd(n, a % n, logger)
@@ -52,17 +44,12 @@ def mod_inverse(a: int, n: int, logger: StepLogger | None = None) -> int:
     inv = y % n
     if logger is not None:
         logger.log("Nghịch đảo modulo", rf"{a}^{{-1}} \mathrm{{mod}}\ {n} = {y} \mathrm{{mod}}\ {n} = {inv}",
-                   f"Kiểm tra: {a} · {inv} mod {n} = {(a * inv) % n}")
+                   f"Kiểm tra: {a}*{inv} mod {n} = {(a * inv) % n}")
     return inv
 
 
 def mod_pow(base: int, exp: int, mod: int, logger: StepLogger | None = None) -> int:
-    """Lũy thừa modulo base^exp mod mod bằng thuật toán bình phương và nhân (slide Ch.3).
-
-    Viết exp = (b_k … b_1 b_0)₂, duyệt bit từ trái sang phải, c = 0, f = 1:
-        c ← 2c,  f ← f² mod n;   nếu b_i = 1: c ← c + 1,  f ← f·a mod n.
-    Kết thúc c = exp và f = a^exp mod n. Khi có logger, ghi bảng (i, b_i, c, f).
-    """
+    # Lũy thừa modulo 
     if mod <= 0:
         raise ValueError("Modulo phải dương")
     if exp < 0:
@@ -86,10 +73,7 @@ def mod_pow(base: int, exp: int, mod: int, logger: StepLogger | None = None) -> 
 
 
 def crt(residues: list[int], moduli: list[int]) -> int:
-    """Định lý phần dư Trung Hoa: tìm x với x ≡ r_i (mod m_i), các m_i đôi một nguyên tố cùng nhau.
-
-    x = Σ r_i · M_i · (M_i⁻¹ mod m_i)  (mod M),  M = Π m_i, M_i = M / m_i.
-    """
+    # Định lý thặng dư Trung Hoa
     if len(residues) != len(moduli) or not moduli:
         raise ValueError("Số phần dư và số modulo phải bằng nhau và khác 0")
     M = 1
@@ -103,22 +87,19 @@ def crt(residues: list[int], moduli: list[int]) -> int:
 
 
 def isqrt(n: int) -> int:
-    """Căn bậc hai nguyên ⌊√n⌋ (Newton trên số nguyên)."""
+    # Căn bậc 2 nguyên
     return iroot(n, 2)[0]
 
 
 def iroot(n: int, k: int) -> tuple[int, bool]:
-    """Căn bậc k nguyên: trả (r, exact) với r = ⌊n^(1/k)⌋ và exact = (r^k == n).
-
-    Dùng phương pháp Newton trên số nguyên nên không mất chính xác như float với số hàng nghìn bit.
-    """
+    # Căn bậc k nguyên
     if n < 0:
         raise ValueError("n phải không âm")
     if k < 1:
         raise ValueError("k phải >= 1")
     if n < 2 or k == 1:
         return n, True
-    r = 1 << ((n.bit_length() + k - 1) // k)          # r^k >= n
+    r = 1 << ((n.bit_length() + k - 1) // k)          
     while True:
         nr = ((k - 1) * r + n // r ** (k - 1)) // k
         if nr >= r:

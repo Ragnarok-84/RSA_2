@@ -19,10 +19,9 @@ REGISTRY: tuple[tuple[str, str], ...] = (
     ("a3_hash_collision", "A3: Va chạm hàm băm yếu (nghịch lý ngày sinh)"),
     ("a4_small_e_attack", "A4: e = 3 + kiểm tra lỏng (Bleichenbacher 2006)"),
     ("a5_factorization", "A5: n nhỏ → phân tích (Pollard rho) → lộ d"),
-    ("a6_crt_fault_attack", "A6: Lỗi khi ký CRT → lộ p, q"),
-    ("a7_key_substitution_mitm", "A7: Thay khoá công khai (MITM)"),
-    ("a8_replay_attack", "A8: Phát lại thông điệp đã ký"),
-    ("a9_surreptitious_forwarding", "A9: Chuyển tiếp lén"),
+    ("a6_key_substitution_mitm", "A6: Thay khoá công khai (MITM)"),
+    ("a7_replay_attack", "A7: Phát lại thông điệp đã ký"),
+    ("a8_surreptitious_forwarding", "A8: Chuyển tiếp lén"),
 )
 
 

@@ -37,8 +37,8 @@ class PKITab(QWidget):
         grid = QGridLayout(ctl)
         actions = [
             ("1. Tạo Root CA + Intermediate CA + TSA", self.create_cas),
-            ("2. Cấp chứng chỉ cho Trang (Sender)", lambda: self.issue("trang")),
-            ("2'. Cấp chứng chỉ cho Thủy (Receiver)", lambda: self.issue("thuy")),
+            ("2.1. Cấp chứng chỉ cho Trang (Sender)", lambda: self.issue("trang")),
+            ("2.2. Cấp chứng chỉ cho Thủy (Receiver)", lambda: self.issue("thuy")),
             ("3. Trang (Sender) ký hợp đồng + dấu thời gian", self.trang_signs),
             ("4. Kiểm tra chữ ký + chứng chỉ + timestamp", self.verify_signed),
             ("Thu hồi chứng chỉ đang chọn", self.revoke_selected),

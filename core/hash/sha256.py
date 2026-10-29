@@ -23,54 +23,43 @@ K = (
 )
 
 
-# Các phép phụ (FIPS 180-4 §3.2, §4.1.2)
 def rotr(x: int, n: int) -> int:
-    """ROTR^n(x): xoay phải n bít trên từ 32 bít."""
+    # ROTR^n(x): xoay phải n bít trên từ 32 bít
     return ((x >> n) | (x << (32 - n))) & MASK
 
 
 def ch(x: int, y: int, z: int) -> int:
-    """Ch(x, y, z) = (x ∧ y) ⊕ (¬x ∧ z)"""
     return (x & y) ^ (~x & z)
 
 
 def maj(x: int, y: int, z: int) -> int:
-    """Maj(x, y, z) = (x ∧ y) ⊕ (x ∧ z) ⊕ (y ∧ z)"""
     return (x & y) ^ (x & z) ^ (y & z)
 
 
 def big_sigma0(x: int) -> int:
-    """Σ0(x) = ROTR²(x) ⊕ ROTR¹³(x) ⊕ ROTR²²(x)"""
     return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22)
 
 
 def big_sigma1(x: int) -> int:
-    """Σ1(x) = ROTR⁶(x) ⊕ ROTR¹¹(x) ⊕ ROTR²⁵(x)"""
     return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25)
 
 
 def small_sigma0(x: int) -> int:
-    """σ0(x) = ROTR⁷(x) ⊕ ROTR¹⁸(x) ⊕ SHR³(x)"""
     return rotr(x, 7) ^ rotr(x, 18) ^ (x >> 3)
 
 
 def small_sigma1(x: int) -> int:
-    """σ1(x) = ROTR¹⁷(x) ⊕ ROTR¹⁹(x) ⊕ SHR¹⁰(x)"""
     return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10)
 
 
 def pad(length: int) -> bytes:
-    """Phần đệm thêm vào sau thông điệp dài `length` byte (FIPS 180-4 §5.1.1)."""
+    # Phần đệm thêm vào sau thông điệp dài `length` byte 
     zeros = (55 - length) % 64
     return b"\x80" + b"\x00" * zeros + (length * 8).to_bytes(8, "big")
 
 
 def _compress(H: list[int], block: bytes) -> None:
-    """Hàm nén cho một khối 512 bít, cập nhật H tại chỗ.
-
-    Vòng lặp viết khai triển các phép Σ, σ, Ch, Maj ở trên (không gọi hàm) để băm tệp lớn nhanh hơn;
-    test/unit kiểm tra hai cách viết cho cùng kết quả.
-    """
+    # Hàm nén nội bộ: cập nhật H theo khối 64 byte
     W = [int.from_bytes(block[i:i + 4], "big") for i in range(0, 64, 4)]
     for t in range(16, 64):
         x, y = W[t - 15], W[t - 2]
@@ -91,7 +80,7 @@ def _compress(H: list[int], block: bytes) -> None:
 
 
 def compress_reference(H: list[int], block: bytes) -> list[int]:
-    """Hàm nén viết đúng ký hiệu FIPS 180-4 (gọi các phép phụ), trả H mới; dùng để đối chiếu trong test."""
+    # Hàm nén viết đúng ký hiệu FIPS 180-4 (gọi các phép phụ), trả H mới; dùng để đối chiếu trong test.
     W = [int.from_bytes(block[i:i + 4], "big") for i in range(0, 64, 4)]
     for t in range(16, 64):
         W.append((small_sigma1(W[t - 2]) + W[t - 7] + small_sigma0(W[t - 15]) + W[t - 16]) & MASK)
@@ -104,7 +93,7 @@ def compress_reference(H: list[int], block: bytes) -> list[int]:
 
 
 class SHA256:
-    """Băm theo từng phần (Merkle–Damgård): update() nhiều lần rồi digest()."""
+    # Băm theo từng phần (Merkle–Damgård): update() nhiều lần rồi digest()
 
     digest_size = DIGEST_SIZE
     block_size = BLOCK_SIZE
@@ -143,12 +132,12 @@ class SHA256:
 
 
 def sha256(data: bytes) -> bytes:
-    """SHA-256(data), 32 byte."""
+    # SHA-256(data), 32 byte
     return SHA256(data).digest()
 
 
 def sha256_file(path: Path, progress=None) -> bytes:
-    """Băm tệp theo khối 64 KB (không đọc cả tệp vào bộ nhớ). `progress(done, total)` nếu cần báo tiến độ."""
+    # Băm tệp theo khối 64 KB (không đọc cả tệp vào bộ nhớ)
     path = Path(path)
     total = path.stat().st_size
     h, done = SHA256(), 0

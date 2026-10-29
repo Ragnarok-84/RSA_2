@@ -10,7 +10,7 @@ from core.utils import canonical_json
 from pki.certificate import now
 from attacks import AttackResult
 
-NAME = "A8: Phát lại thông điệp đã ký"
+NAME = "A7: Phát lại thông điệp đã ký"
 MAX_AGE = 300
 
 
@@ -38,7 +38,7 @@ class Bank:
 
 def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 1024) -> AttackResult:
     log = logger if logger is not None else StepLogger()
-    log.head(f"TẤN CÔNG A8: PHÁT LẠI ({'CÓ' if defended else 'KHÔNG'} nonce + timestamp trong phần được ký)")
+    log.head(f"TẤN CÔNG A7: PHÁT LẠI ({'CÓ' if defended else 'KHÔNG'} nonce + timestamp trong phần được ký)")
     pub, priv = generate_keypair(bits)
     bank = Bank(pub, check_freshness=defended)
     order_obj: dict = {"from": "trang", "to": "thuy", "amount": 1_000_000}

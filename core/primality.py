@@ -19,11 +19,8 @@ SMALL_PRIMES = _small_primes(1000)
 
 
 def miller_rabin(n: int, rounds: int = 40) -> bool:
-    """Miller–Rabin: viết n − 1 = 2^k · q với q lẻ, chọn a ∈ [2, n − 2] ngẫu nhiên.
-
-    n là "có thể nguyên tố" nếu a^q ≡ 1 hoặc a^(2^j·q) ≡ −1 (mod n) với j nào đó trong [0, k).
-    Xác suất nhận nhầm hợp số ≤ 4^(−rounds).
-    """
+    # MillerR-abin: kiểm tra xác suất n là số nguyên tố. Nếu trả về False thì chắc chắn n là hợp số.
+    
     if n < 2:
         return False
     if n in (2, 3):
@@ -44,12 +41,12 @@ def miller_rabin(n: int, rounds: int = 40) -> bool:
             if x == n - 1:
                 break
         else:
-            return False                      # a là nhân chứng: n chắc chắn là hợp số
+            return False                      
     return True
 
 
 def is_probable_prime(n: int, rounds: int = 40) -> bool:
-    """Chia thử các số nguyên tố < 1000 để loại nhanh, rồi Miller–Rabin."""
+    """Chia thử các số nguyên tố < 1000 để loại nhanh, rồi Miller-Rabin."""
     if n < 2:
         return False
     for p in SMALL_PRIMES:
@@ -61,11 +58,8 @@ def is_probable_prime(n: int, rounds: int = 40) -> bool:
 
 
 def generate_prime(bits: int, top_bits: int = 1) -> int:
-    """Sinh số nguyên tố ngẫu nhiên đúng `bits` bit.
+    # Sinh số nguyên tố ngẫu nhiên đúng `bits` bit.
 
-    Ứng viên ngẫu nhiên từ secrets, bật bit cao nhất (đủ độ dài) và bit thấp nhất (số lẻ).
-    `top_bits = 2` bật thêm bit cao thứ hai để tích hai số nguyên tố bits-bit có đúng 2·bits bit.
-    """
     if bits < 3:
         raise ValueError("Số bit phải >= 3")
     if top_bits not in (1, 2):

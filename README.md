@@ -10,6 +10,9 @@ EMSA-PSS (RFC 8017), chứng chỉ, CA, CRL, dấu thời gian. Lõi **không** 
 `pycryptodome`, `gmpy2` và không dùng `pow(a, b, n)` built-in; test `test/unit/test_constraints.py` tự kiểm tra
 điều này.
 
+Phép ký RSA dùng công thức cơ bản $s = m^d \bmod n$. CRT còn trong `number_theory.py` như một phép toán riêng
+cho ví dụ số học; các tham số CRT không nằm trong khóa hay quy trình ký.
+
 * Ngoại lệ duy nhất: `scenarios/s6_sign_then_encrypt.py` dùng AES-GCM của thư viện `cryptography` (phần ngoài
   lõi; RSA-OAEP, MGF1, SHA-256 và chữ ký trong kịch bản này vẫn là code tự viết).
 * `test/` là nơi duy nhất dùng `hashlib`, `cryptography`, `pow` built-in để **đối chiếu** kết quả.
@@ -74,7 +77,7 @@ chuẩn Python; chạy từ thư mục gốc thì package của repo được ư
 | Kiểm tra chữ ký | `python -m demo.cli verify --in sample/messages/contract.txt --sig sample/signatures/contract.txt.sig.json` |
 | Một tấn công / tất cả | `python -m demo.cli attack a4_small_e_attack [--defended]`, `python -m demo.run_all_attacks` |
 | Một kịch bản / tất cả | `python -m demo.cli scenario s3_non_repudiation_contract`, `python -m demo.cli scenario all` |
-| Benchmark | `python -m demo.benchmark [--quick]` → `docs/report/benchmark.csv` |
+| Benchmark | `python -m demo.benchmark [--quick]` (in kết quả ra màn hình) |
 | Sinh lại dữ liệu mẫu | `python -m demo.cli gen-samples` |
 
 ### GUI
@@ -84,8 +87,8 @@ chuẩn Python; chạy từ thư mục gốc thì package của repo được ư
 | 1. Tiny RSA | Nhập $p, q, e$ và $h$ hoặc thông điệp; Ký / Kiểm tra; công thức hiển thị bằng Unicode; bảng Euclid mở rộng và bảng bình phương và nhân ($i, b_i, c, f$); có thể hiện từng bước để thuyết trình |
 | 2. Ký / Kiểm tra | Sinh khoá 1024/2048/3072 hoặc mở từ `sample/keys`; ký văn bản / tệp (xem trước ảnh) bằng PKCS#1 v1.5 / PSS; hiện $h$, EM, chữ ký, thời gian; lưu / mở `*.sig.json`; Phương (Attacker) có thể lật 1 bít; kéo-thả tệp |
 | 3. PKI | Cây Root CA → Intermediate CA → Trang (Sender) / Thủy (Receiver) (+ TSA); cấp, thu hồi, xem chứng chỉ; Trang ký hợp đồng có dấu thời gian, Linh (Third Party) kiểm tra |
-| 4. Tấn công & Kịch bản | Danh sách S1–S6 và A1–A9; ô **Bật biện pháp phòng chống**; kết quả từng bước |
-| 5. Benchmark | Chạy các phép đo sinh khoá / ký (CRT và không CRT) / kiểm tra theo kích thước khoá và băm theo kích thước tệp; xem kết quả trong bảng |
+| 4. Tấn công & Kịch bản | Danh sách S1–S6 và A1–A8; ô **Bật biện pháp phòng chống**; kết quả từng bước |
+| 5. Benchmark | Chạy các phép đo sinh khoá / ký / kiểm tra theo kích thước khoá và băm theo kích thước tệp; xem kết quả trong bảng |
 | 6. Kiểm thử | Chạy các ca kiểm thử và xem kết quả đối chiếu trực tiếp trong bảng |
 
 Tác vụ chậm chạy trong `QThreadPool` nên giao diện không bị treo. Giao diện dùng style Fusion + `style.qss`
@@ -104,13 +107,13 @@ python -m pytest test/required -v
 | --- | --- |
 | `test_r1_tiny_slide_examples.py` | Ví dụ tính tay trong slide: `egcd(4864, 3458)`, nghịch đảo modulo, bình phương và nhân, CRT, Tiny $h=88 \Rightarrow s=11$ |
 | `test_r2_sha256_nist.py` | Test vector NIST FIPS 180-4 + đối chiếu `hashlib` ở các độ dài biên 55, 56, 63, 64, 65 byte |
-| `test_r3_signature_cases.py` | Ca tự viết: thông điệp rỗng, tiếng Việt UTF-8, ảnh `logo.png`; sửa 1 bít thông điệp / chữ ký / sai khoá → FAIL; CRT = không CRT |
+| `test_r3_signature_cases.py` | Ca tự viết: thông điệp rỗng, tiếng Việt UTF-8, ảnh `logo.png`; sửa 1 bít thông điệp / chữ ký / sai khoá → FAIL |
 | `test_r4_cross_check.py` | Chữ ký PKCS#1 v1.5 **trùng từng byte** với `cryptography`; PSS kiểm tra chéo hai chiều |
 
 Bảng kết quả đối chiếu: tab **6. Kiểm thử** trên GUI, hoặc
 
 ```bash
-python -m test.report --out docs/report/test_results.md     # thêm --slow cho ca 1 000 000 ký tự 'a'
+python -m test.report                                      # thêm --slow cho ca 1 000 000 ký tự 'a'
 ```
 
 Cho nhóm: `python -m pytest -m "not slow"` sau mỗi lần sửa code; `python -m pytest` chạy toàn bộ.
@@ -129,7 +132,7 @@ core/          lõi tự cài: number_theory, primality, rsa_keygen, rsa_primiti
                padding/ (pkcs1_v15, pss), signature, tiny_rsa, key_io, step_logger, utils
 pki/           certificate, ca, chain_verify, revocation (CRL), timestamp (TSA)
 scenarios/     s1…s6: chứng minh thuộc tính an toàn khi dùng đúng (kỳ vọng valid == True)
-attacks/       a1…a9: hệ thống bị phá khi bỏ một thành phần (success == True khi yếu, False khi phòng chống)
+attacks/       a1…a8: hệ thống bị phá khi bỏ một thành phần (success == True khi yếu, False khi phòng chống)
 test/          required/ (giảng viên chấm), unit/ (test lúc code), vectors/, report.py
 demo/          cli.py, benchmark.py, run_all_attacks.py, gui/ (PySide6)
 sample/        messages/, images/, keys/ (KHOÁ DEMO), certs/, signatures/
@@ -140,12 +143,12 @@ docs/          report/, slides/, diagrams/ (Mermaid), ai_usage.md
 
 | Kịch bản (dùng đúng) | Tấn công tương ứng (bỏ một thành phần) | Thành phần bị bỏ |
 | --- | --- | --- |
-| `s1_authentication` | `a7_key_substitution_mitm` | PKI / chứng chỉ |
+| `s1_authentication` | `a6_key_substitution_mitm` | PKI / chứng chỉ |
 | `s2_integrity_tamper` | `a1_no_hash_forgery`, `a2_existential_forgery`, `a3_hash_collision`, `a4_small_e_attack` | Hash an toàn, padding chuẩn, kiểm tra chặt |
-| `s3_non_repudiation_contract` | `a8_replay_attack` | Timestamp / nonce trong phần được ký |
-| `s4_key_compromise` | `a5_factorization`, `a6_crt_fault_attack` | Khoá đủ lớn, kiểm tra chữ ký trước khi phát hành |
+| `s3_non_repudiation_contract` | `a7_replay_attack` | Timestamp / nonce trong phần được ký |
+| `s4_key_compromise` | `a5_factorization` | Khoá đủ lớn, thu hồi chứng chỉ và dấu thời gian |
 | `s5_hmac_vs_signature` | — | (so sánh với cơ chế khoá đối xứng) |
-| `s6_sign_then_encrypt` | `a9_surreptitious_forwarding` | Danh tính người nhận trong phần được ký |
+| `s6_sign_then_encrypt` | `a8_surreptitious_forwarding` | Danh tính người nhận trong phần được ký |
 
 ## Định dạng tệp
 
@@ -153,7 +156,7 @@ docs/          report/, slides/, diagrams/ (Mermaid), ai_usage.md
   không mã hoá.
 * **Chữ ký** (`*.sig.json`): `version`, `algorithm` = RSA, `scheme` = PKCS1v15 / PSS, `hash` = SHA-256,
   `message_file`, `message_hash_hex`, `signature_hex`, `signer_certificate`, `timestamp_token`.
-* Mọi cấu trúc được ký (chứng chỉ, CRL, phần được ký trong S6, A8) đều serialize chuẩn tắc:
+* Mọi cấu trúc được ký (chứng chỉ, CRL, phần được ký trong S6, A7) đều serialize chuẩn tắc:
   `json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")`.
 * So sánh giá trị băm / khối EM dùng `core.utils.constant_time_eq` (thời gian hằng, chống timing attack).
 

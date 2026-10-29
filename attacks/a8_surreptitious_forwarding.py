@@ -7,7 +7,7 @@ from core.utils import canonical_json
 from pki.certificate import now
 from attacks import AttackResult
 
-NAME = "A9: Chuyển tiếp lén"
+NAME = "A8: Chuyển tiếp lén"
 
 
 def signed_part(message: bytes, to: str, t: int, bind_recipient: bool) -> bytes:
@@ -24,7 +24,7 @@ def accept(env: dict, me: str, trang_pub: RSAPublicKey, bind_recipient: bool) ->
 
 def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 1024) -> AttackResult:
     log = logger if logger is not None else StepLogger()
-    log.head(f"TẤN CÔNG A9: CHUYỂN TIẾP LÉN ({'CÓ' if defended else 'KHÔNG'} ký kèm người nhận)")
+    log.head(f"TẤN CÔNG A8: CHUYỂN TIẾP LÉN ({'CÓ' if defended else 'KHÔNG'} ký kèm người nhận)")
     trang_pub, trang_priv = generate_keypair(bits)
     m = "Anh đồng ý với đề nghị của em. Thứ Bảy gặp nhau nhé. — trang".encode("utf-8")
     t = now()

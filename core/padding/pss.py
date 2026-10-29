@@ -9,7 +9,7 @@ HASH_LEN = 32
 
 
 def mgf1(seed: bytes, mask_len: int) -> bytes:
-    """MGF1 (RFC 8017 phụ lục B.2.1): T = SHA256(seed || C(0)) || SHA256(seed || C(1)) || … cắt còn mask_len byte."""
+    # MGF1 - tạo mask dài mask_len từ seed bằng SHA-256
     out = bytearray()
     counter = 0
     while len(out) < mask_len:
@@ -23,7 +23,7 @@ def _xor(a: bytes, b: bytes) -> bytes:
 
 
 def encode(message_hash: bytes, em_bits: int, salt_len: int = 32, salt: bytes | None = None) -> bytes:
-    """EMSA-PSS-ENCODE. Truyền `salt` cố định để kiểm thử tất định; mặc định salt ngẫu nhiên từ secrets."""
+    # EMSA-PSS-ENCODE. Truyền `salt` cố định để kiểm thử tất định; mặc định salt ngẫu nhiên từ secrets.
     em_len = (em_bits + 7) // 8
     if len(message_hash) != HASH_LEN:
         raise ValueError("Giá trị băm SHA-256 phải dài 32 byte")
@@ -41,7 +41,7 @@ def encode(message_hash: bytes, em_bits: int, salt_len: int = 32, salt: bytes | 
 
 
 def verify(message_hash: bytes, em: bytes, em_bits: int, salt_len: int = 32) -> bool:
-    """EMSA-PSS-VERIFY (RFC 8017 §9.1.2): True nếu EM nhất quán với giá trị băm."""
+    # EMSA-PSS-VERIFY: True nếu EM nhất quán với giá trị băm
     em_len = (em_bits + 7) // 8
     if len(message_hash) != HASH_LEN or len(em) != em_len or em_len < HASH_LEN + salt_len + 2:
         return False

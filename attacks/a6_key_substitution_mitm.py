@@ -8,12 +8,12 @@ from pki.certificate import Certificate
 from pki.chain_verify import verify_chain
 from attacks import AttackResult
 
-NAME = "A7: Thay khoá công khai (MITM)"
+NAME = "A6: Thay khoá công khai (MITM)"
 
 
 def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 1024) -> AttackResult:
     log = logger if logger is not None else StepLogger()
-    log.head(f"TẤN CÔNG A7: THAY KHOÁ CÔNG KHAI ({'CÓ' if defended else 'KHÔNG'} PKI)")
+    log.head(f"TẤN CÔNG A6: THAY KHOÁ CÔNG KHAI ({'CÓ' if defended else 'KHÔNG'} PKI)")
     trang_pub, _ = generate_keypair(bits)
     phuong_pub, phuong_priv = generate_keypair(bits)
     fake = "trang: thuy chuyển ngay 200 triệu vào tài khoản 0123 giúp tôi.".encode("utf-8")

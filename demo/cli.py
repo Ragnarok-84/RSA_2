@@ -263,8 +263,6 @@ def menu() -> None:
                 from test import report
                 rows = report.build_report()
                 print(report.to_console(rows))
-                if _ask("Xuất docs/report/test_results.md? (c/k)", "k").lower() == "c":
-                    print("Đã ghi", report.write_markdown(rows, ROOT / "docs" / "report" / "test_results.md"))
         except (ValueError, OSError, KeyError) as err:
             print(_color(f"Lỗi: {err}", "bad"))
 
@@ -307,7 +305,6 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("benchmark", help="đo hiệu năng")
     b.add_argument("--quick", action="store_true")
     r = sub.add_parser("report", help="bảng đối chiếu kiểm thử")
-    r.add_argument("--out", type=Path)
     r.add_argument("--slow", action="store_true")
     g = sub.add_parser("gen-samples", help="sinh lại sample/")
     g.add_argument("--bits", type=int, default=2048)
@@ -334,7 +331,7 @@ def main(argv: list[str] | None = None) -> int:
         return benchmark.main(["--quick"] if args.quick else [])
     elif args.cmd == "report":
         from test import report
-        return report.main((["--out", str(args.out)] if args.out else []) + (["--slow"] if args.slow else []))
+        return report.main(["--slow"] if args.slow else [])
     elif args.cmd == "gen-samples":
         gen_samples(args.bits)
     return 0

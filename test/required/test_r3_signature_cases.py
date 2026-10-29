@@ -1,7 +1,7 @@
 """R3 — Đáp ứng yêu cầu: ít nhất 3 ca kiểm thử tự viết.
 
 Thông điệp rỗng, văn bản tiếng Việt UTF-8, tệp ảnh nhị phân (sample/images/logo.png) với cả PKCS#1 v1.5 và PSS;
-sửa 1 bít thông điệp / 1 bít chữ ký / dùng sai khoá công khai → verify == False; ký CRT và không CRT cho cùng kết quả.
+sửa 1 bít thông điệp / 1 bít chữ ký / dùng sai khoá công khai → verify == False.
 """
 import pytest
 

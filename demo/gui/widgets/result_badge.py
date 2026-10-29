@@ -27,8 +27,8 @@ class ResultBadge(QWidget):
         self.reason.setText(reason)
         self.reason.setStyleSheet(f"color: {color};")
 
-    def set_result(self, ok: bool, reason: str = "", ok_text: str = "✅ HỢP LỆ",
-                   bad_text: str = "❌ KHÔNG HỢP LỆ") -> None:
+    def set_result(self, ok: bool, reason: str = "", ok_text: str = "HỢP LỆ",
+                   bad_text: str = "KHÔNG HỢP LỆ") -> None:
         self._show(ok_text if ok else bad_text, reason, GREEN if ok else RED)
 
     def set_info(self, text: str, reason: str = "") -> None:
