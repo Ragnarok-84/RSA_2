@@ -1,9 +1,18 @@
+# Python
 __pycache__/
 *.pyc
-# Tệp sinh ra khi chạy demo (khóa riêng, chữ ký, bản mã)
-output/
-*.private.json
-*.sig.json
-*.enc.json
+.pytest_cache/
+.ruff_cache/
+
+# Môi trường ảo
 .venv/
 venv/
+
+# Chữ ký sinh ra khi chạy demo (giữ lại file mẫu)
+sample/signatures/*
+!sample/signatures/contract.txt.sig.json
+
+# Đóng gói PyInstaller
+build/
+dist/
+*.spec

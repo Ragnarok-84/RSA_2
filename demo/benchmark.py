@@ -1,67 +1,121 @@
-"""Đo thời gian theo kích thước khóa và dữ liệu."""
+"""Đo hiệu năng: sinh khoá, ký (có / không CRT), kiểm tra theo kích thước khoá; băm SHA-256 theo kích thước dữ liệu.
+
+Mỗi phép đo lặp `repeats` lần và lấy trung vị (dữ liệu >= 1 MB chỉ băm 1 lần vì SHA-256 tự cài bằng Python chậm).
+
+    python -m demo.benchmark                  # đầy đủ: khoá 512–3072 bít, dữ liệu 1 KB – 10 MB
+    python -m demo.benchmark --quick          # nhanh: khoá 512–2048 bít, dữ liệu tới 1 MB
+Kết quả ghi docs/report/benchmark.csv.
+"""
+from __future__ import annotations
+
+import argparse
+import csv
 import os
+import statistics
 import sys
-import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.hash.sha256 import sha256
+from core.rsa_keygen import generate_keypair
+from core.signature import sign, verify
+from core.utils import Timer
+from demo import REPORT_DIR
 
-from core.rsa_math import generate_keypair
-from core.sha256 import hash_sha256
-from core import rsa_full
-from core import secure_message as sm
+KEY_SIZES = (512, 1024, 2048, 3072)
+DATA_SIZES = (1 << 10, 10 << 10, 100 << 10, 1 << 20, 10 << 20)
+KINDS = {
+    "keygen": "Sinh khoá",
+    "sign_crt": "Ký (CRT)",
+    "sign_nocrt": "Ký (không CRT)",
+    "verify": "Kiểm tra",
+    "hash": "Băm SHA-256",
+}
 
 
-def timeit(fn, repeat=1):
-    t = time.perf_counter()
-    for _ in range(repeat):
-        out = fn()
-    return (time.perf_counter() - t) / repeat, out
+@dataclass
+class BenchRow:
+    kind: str
+    param: int                  # số bít khoá hoặc số byte dữ liệu
+    median_s: float
+    repeats: int
 
 
-def run_benchmark(real=False):
-    key_sizes = (1024, 2048, 3072) if real else (512, 1024, 2048)
-    data_sizes = (1024, 16 * 1024, 64 * 1024, 256 * 1024) if real else (1024, 8 * 1024, 64 * 1024)
+def fmt_size(n: int) -> str:
+    for unit, k in (("MB", 1 << 20), ("KB", 1 << 10)):
+        if n >= k:
+            return f"{n // k} {unit}"
+    return f"{n} B"
 
-    print("\n1) THEO KÍCH THƯỚC KHÓA (thông điệp ngắn)")
-    print(f"{'Khóa (bit)':>10} | {'Sinh khóa':>10} | {'Ký v1.5':>9} | {'Ký PSS':>9} | {'Kiểm tra':>9} "
-          f"| {'OAEP mã':>9} | {'OAEP giải':>9}")
-    print("-" * 84)
-    msg = "Benchmark chữ ký RSA"
+
+def _median(fn: Callable[[], object], repeats: int) -> float:
+    times = []
+    for _ in range(repeats):
+        with Timer() as t:
+            fn()
+        times.append(t.elapsed)
+    return statistics.median(times)
+
+
+def run_benchmark(key_sizes=KEY_SIZES, data_sizes=DATA_SIZES, repeats: int = 3,
+                  progress: Callable[[str], None] | None = None) -> list[BenchRow]:
+    say = progress or (lambda _s: None)
+    rows: list[BenchRow] = []
+    msg = b"Benchmark RSA signature"
     for bits in key_sizes:
-        t_gen, (priv, pub) = timeit(lambda: generate_keypair(keysize=bits))
-        t_sign, s = timeit(lambda: rsa_full.sign_message(msg, priv), 3)
-        t_pss, _ = timeit(lambda: rsa_full.sign_message(msg, priv, "pss"), 3)
-        t_ver, _ = timeit(lambda: rsa_full.verify_message(msg, s, pub), 3)
-        if rsa_full.max_message_length(pub) >= 32:
-            t_enc, c = timeit(lambda: rsa_full.oaep_encrypt(b"k" * 32, pub), 3)
-            t_dec, _ = timeit(lambda: rsa_full.oaep_decrypt(c, priv), 3)
-            oaep = f"{t_enc * 1000:>7.1f}ms | {t_dec * 1000:>7.1f}ms"
-        else:
-            oaep = f"{'(N quá nhỏ)':>9} | {'':>9}"
-        print(f"{bits:>10} | {t_gen:>8.2f}s | {t_sign * 1000:>7.1f}ms | {t_pss * 1000:>7.1f}ms "
-              f"| {t_ver * 1000:>7.1f}ms | {oaep}")
-    print("   Nhận xét: ký/giải mã dùng d (lớn, ~N bit) nên chậm hơn hẳn kiểm tra/mã hóa dùng e = 65537 (17 bit);")
-    print("   tăng gấp đôi độ dài khóa thì thời gian ký tăng khoảng 6-8 lần (độ phức tạp ~ O(k^3)).")
-
-    print("\n2) THEO KÍCH THƯỚC DỮ LIỆU (khóa 1024 bit)")
-    print(f"{'Dữ liệu':>10} | {'SHA-256':>9} | {'Ký (băm+ký)':>12} | {'Ký rồi mã hóa':>14} | {'Giải mã+kiểm tra':>16}")
-    print("-" * 76)
-    a_priv, a_pub = generate_keypair(keysize=1024)
-    b_priv, b_pub = generate_keypair(keysize=1024)
+        say(f"Sinh khoá {bits} bít…")
+        rows.append(BenchRow("keygen", bits, _median(lambda: generate_keypair(bits), repeats), repeats))
+        pub, priv = generate_keypair(bits)
+        sig = sign(msg, priv)
+        say(f"Ký / kiểm tra với khoá {bits} bít…")
+        rows.append(BenchRow("sign_crt", bits, _median(lambda: sign(msg, priv, use_crt=True), repeats), repeats))
+        rows.append(BenchRow("sign_nocrt", bits, _median(lambda: sign(msg, priv, use_crt=False), repeats), repeats))
+        rows.append(BenchRow("verify", bits, _median(lambda: verify(msg, sig, pub), repeats), repeats))
     for size in data_sizes:
+        say(f"Băm {fmt_size(size)}…")
         data = os.urandom(size)
-        t_hash, _ = timeit(lambda: hash_sha256(data))
-        t_sign, _ = timeit(lambda: rsa_full.sign_message(data, a_priv))
-        t_seal, env = timeit(lambda: sm.seal(data, "Thu Trang", a_priv, "Thu Thủy", b_pub))
-        t_open, _ = timeit(lambda: sm.open_sealed(env, "Thu Thủy", b_priv, {"Thu Trang": a_pub}.get))
-        label = f"{size // 1024} KB"
-        print(f"{label:>10} | {t_hash:>8.3f}s | {t_sign:>11.3f}s | {t_seal:>13.3f}s | {t_open:>15.3f}s")
-    print("   Nhận xét: phần RSA có chi phí cố định (1 phép lũy thừa) bất kể dữ liệu dài bao nhiêu;")
-    print("   thời gian tăng tuyến tính theo dữ liệu là do băm SHA-256 và dòng khóa đối xứng.")
-    print("   => Đây là lý do phải KÝ TRÊN GIÁ TRỊ BĂM và MÃ HÓA LAI thay vì RSA trực tiếp trên dữ liệu.")
+        r = repeats if size < (1 << 20) else 1
+        rows.append(BenchRow("hash", size, _median(lambda: sha256(data), r), r))
+    say("Xong")
+    return rows
+
+
+def save_csv(rows: list[BenchRow], path: Path = REPORT_DIR / "benchmark.csv") -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["phep_do", "tham_so", "don_vi", "trung_vi_giay", "so_lan_lap"])
+        for r in rows:
+            w.writerow([r.kind, r.param, "byte" if r.kind == "hash" else "bit", f"{r.median_s:.6f}", r.repeats])
+    return path
+
+
+def to_console(rows: list[BenchRow]) -> str:
+    lines = [f"{'Phép đo':<16} {'Tham số':>10} {'Trung vị':>12}"]
+    for r in rows:
+        param = fmt_size(r.param) if r.kind == "hash" else f"{r.param} bít"
+        extra = f"  ({r.param / r.median_s / (1 << 20):.2f} MB/s)" if r.kind == "hash" and r.median_s else ""
+        lines.append(f"{KINDS[r.kind]:<16} {param:>10} {r.median_s * 1000:>9.2f} ms{extra}")
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Benchmark hệ chữ ký RSA")
+    ap.add_argument("--quick", action="store_true", help="khoá tới 2048 bít, dữ liệu tới 1 MB")
+    ap.add_argument("--repeats", type=int, default=3)
+    ap.add_argument("--out", type=Path, default=REPORT_DIR / "benchmark.csv")
+    args = ap.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    keys = KEY_SIZES[:3] if args.quick else KEY_SIZES
+    data = DATA_SIZES[:4] if args.quick else DATA_SIZES
+    rows = run_benchmark(keys, data, args.repeats, progress=lambda s: print("…", s, flush=True))
+    print(to_console(rows))
+    print(f"\nĐã ghi {save_csv(rows, args.out)}")
+    return 0
 
 
 if __name__ == "__main__":
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
-    run_benchmark(real="--real" in sys.argv)
+    raise SystemExit(main())

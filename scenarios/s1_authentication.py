@@ -1,73 +1,67 @@
-"""Kịch bản S1: xác thực bằng thách - đáp và chữ ký số."""
-import os
-import sys
+"""S1 — Chứng thực nguồn gốc.
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+Chỉ người giữ khoá riêng d_A tạo được chữ ký mà khoá công khai e_A kiểm tra được. Bob lấy e_A từ chứng chỉ
+do Root CA cấp (nên chắc chắn e_A là của Alice), rồi:
+  1. kiểm tra chữ ký của Alice trên thông điệp → chấp nhận;
+  2. Mallory ký bằng khoá của mình nhưng xưng là Alice → bị từ chối;
+  3. thách – đáp: Bob gửi nonce ngẫu nhiên, Alice ký nonce → chứng thực thực thể; Mallory không làm được.
 
-from core.rsa_math import generate_keypair
-from core.rsa_full import sign_message, verify_message
-from pki.cert import CertificateAuthority, verify_certificate
-from pki.timestamp import NonceRegistry
+Tấn công tương ứng khi bỏ PKI: attacks/a7_key_substitution_mitm.py.
+"""
+from __future__ import annotations
 
+import secrets
 
-class AuthServer:
-    """Server xác thực: phát nonce dùng một lần, kiểm tra chứng thư + chữ ký trên nonce."""
+from core.rsa_keygen import generate_keypair
+from core.signature import sign, verify_detailed
+from core.step_logger import StepLogger
+from pki.ca import CertificateAuthority
+from pki.chain_verify import verify_chain
+from scenarios import ScenarioResult
 
-    def __init__(self, ca_cert, crl):
-        self.ca_cert, self.crl = ca_cert, crl
-        self.nonces = NonceRegistry()
-
-    def challenge(self, username):
-        return self.nonces.issue(username)
-
-    def respond(self, cert, nonce, signature):
-        ok, why = self.nonces.consume(nonce, cert["subject"])
-        if not ok:
-            return False, why
-        ok, why = verify_certificate(cert, self.ca_cert, self.crl, usage="signature")
-        if not ok:
-            return False, why
-        if not verify_message(nonce, signature, cert["public_key"]):
-            return False, "Chữ ký trên nonce không hợp lệ"
-        return True, f"Đã xác thực: {cert['subject']}"
+NAME = "S1: Chứng thực nguồn gốc"
 
 
-def run_scenario_s1(keysize=1024, verbose=True):
-    say = print if verbose else (lambda *a, **k: None)
-    say("\n=======================================================")
-    say("KỊCH BẢN S1: XÁC THỰC NGƯỜI DÙNG (AUTHENTICATION)")
-    say("=======================================================")
+def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
+    log = logger if logger is not None else StepLogger()
+    log.head("KỊCH BẢN S1: CHỨNG THỰC NGUỒN GỐC (AUTHENTICATION)")
 
-    ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
-    alice_priv, alice_pub = generate_keypair(keysize=keysize)
-    alice_cert = ca.issue_certificate("Thu Trang", alice_pub)
-    server = AuthServer(ca.certificate, ca.crl)
+    root = CertificateAuthority.create("Root CA ATBMTT", bits)
+    root.self_signed_root()
+    alice_pub, alice_priv = generate_keypair(bits)
+    alice_cert = root.issue("Alice", alice_pub)
+    log.note("[1] Root CA cấp chứng chỉ cho Alice (gắn tên 'Alice' với khoá công khai e_A)", alice_cert.describe())
 
-    nonce = server.challenge("Thu Trang")
-    say(f"[1] Server gửi chuỗi thử thách (nonce ngẫu nhiên): '{nonce}'")
-    sig = sign_message(nonce, alice_priv)
-    say(f"[2] Thu Trang ký nonce bằng khóa riêng: S = {str(sig)[:30]}...")
-    ok, msg = server.respond(alice_cert, nonce, sig)
-    say(f"[3] Server kiểm tra chứng thư + chữ ký: {msg}")
+    message = "Alice gửi Bob: hẹn 9h sáng thứ Hai ký hợp đồng tại phòng 301.".encode("utf-8")
+    sig = sign(message, alice_priv)
+    log.note("[2] Alice ký thông điệp bằng khoá riêng d_A", f"M = {message.decode()}\nS = {sig.hex()[:64]}…")
 
-    # Mai Phương không có khóa riêng của Thu Trang, ký bằng khóa của mình
-    eve_priv, eve_pub = generate_keypair(keysize=keysize)
-    nonce2 = server.challenge("Thu Trang")
-    fake_ok, fake_msg = server.respond(alice_cert, nonce2, sign_message(nonce2, eve_priv))
-    say(f"[4] Mai Phương mạo danh Thu Trang, ký bằng khóa của Mai Phương: {'chấp nhận' if fake_ok else 'TỪ CHỐI'} ({fake_msg})")
+    chain = verify_chain(alice_cert, [], [root.certificate])
+    res = verify_detailed(message, sig, alice_cert.public_key)
+    log.log("[3] Bob kiểm tra chuỗi chứng chỉ của Alice", None, chain.reason, level="ok" if chain.valid else "bad")
+    log.log("    Bob kiểm tra chữ ký bằng e_A lấy từ chứng chỉ", r"\mathrm{SHA256}(M) \equiv \mathrm{Decode}(S^{e_A} \mathrm{mod}\ n_A)",
+            res.reason, level="ok" if res.valid else "bad")
 
-    # Mai Phương tự tạo chứng thư "Thu Trang" bằng CA của mình
-    eve_ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
-    nonce3 = server.challenge("Thu Trang")
-    cert_ok, cert_msg = server.respond(eve_ca.issue_certificate("Thu Trang", eve_pub), nonce3,
-                                       sign_message(nonce3, eve_priv))
-    say(f"[5] Mai Phương dùng chứng thư 'Thu Trang' do CA giả cấp: {'chấp nhận' if cert_ok else 'TỪ CHỐI'} ({cert_msg})")
-    say("    (Tấn công phát lại gói (nonce, S) cũ: xem kịch bản S4)")
+    mallory_pub, mallory_priv = generate_keypair(bits)
+    fake = "Alice gửi Bob: chuyển trước 50 triệu tiền cọc vào tài khoản 999-888.".encode("utf-8")
+    fake_sig = sign(fake, mallory_priv)
+    fake_res = verify_detailed(fake, fake_sig, alice_cert.public_key)
+    log.log("[4] Mallory không có d_A, ký bằng khoá của mình rồi xưng là Alice", None,
+            f"M' = {fake.decode()}\nKiểm tra bằng e_A: {fake_res.reason}", level="bad" if fake_res.valid else "ok")
 
-    success = ok and not fake_ok and not cert_ok
-    say("[SUCCESS] Chỉ người giữ khóa riêng của Thu Trang mới xác thực được." if success else "[FAILED]")
-    return success
+    nonce = secrets.token_bytes(32)
+    log.note("[5] Thách – đáp: Bob gửi nonce ngẫu nhiên 256 bít", nonce.hex())
+    answer = verify_detailed(nonce, sign(nonce, alice_priv), alice_cert.public_key)
+    impostor = verify_detailed(nonce, sign(nonce, mallory_priv), alice_cert.public_key)
+    log.log("    Alice ký nonce → Bob kiểm tra", None, answer.reason, level="ok" if answer.valid else "bad")
+    log.log("    Mallory ký nonce bằng khoá của mình → Bob kiểm tra", None, impostor.reason,
+            level="bad" if impostor.valid else "ok")
 
-
-if __name__ == "__main__":
-    run_scenario_s1()
+    valid = chain.valid and res.valid and not fake_res.valid and answer.valid and not impostor.valid
+    summary = ("Chỉ người giữ d_A tạo được chữ ký kiểm tra được bằng e_A trong chứng chỉ của Alice → chứng thực nguồn gốc."
+               if valid else "Kịch bản S1 không đạt.")
+    (log.ok if valid else log.bad)("[KẾT LUẬN] " + summary)
+    return ScenarioResult(NAME, valid, summary, {
+        "chain": chain.reason, "alice_signature": res.valid, "mallory_signature": fake_res.valid,
+        "challenge_alice": answer.valid, "challenge_mallory": impostor.valid,
+    })

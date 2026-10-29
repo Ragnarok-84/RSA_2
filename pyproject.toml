@@ -1,0 +1,22 @@
+[project]
+name = "rsa-digital-signature"
+version = "1.0.0"
+description = "Hệ chữ ký điện tử RSA — ký trên giá trị băm, kiểm tra chữ ký, chứng thực và chống chối bỏ (CNTT1168)"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+# Thư mục `test` trùng tên package `test` của thư viện chuẩn: đặt thư mục gốc repo lên đầu sys.path
+pythonpath = ["."]
+testpaths = ["test"]
+addopts = "-ra"
+markers = [
+    "slow: test chậm (sinh khoá 3072 bít, băm 1 000 000 ký tự); bỏ qua bằng -m \"not slow\"",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

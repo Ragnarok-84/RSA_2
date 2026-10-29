@@ -1,248 +1,366 @@
-"""Menu demo dạng dòng lệnh."""
-import os
+"""Giao diện dòng lệnh (phương án dự phòng, chạy mọi máy không cần Qt).
+
+    python -m demo.cli                         # menu số
+    python -m demo.cli tiny --h 88
+    python -m demo.cli keygen --bits 2048 --out sample/keys/alice_sign.json --owner Alice
+    python -m demo.cli sign --key sample/keys/alice_sign.json --in sample/messages/contract.txt
+    python -m demo.cli verify --in sample/messages/contract.txt --sig sample/signatures/contract.txt.sig.json
+    python -m demo.cli attack a4_small_e_attack [--defended]      |  attack all
+    python -m demo.cli scenario s3_non_repudiation_contract        |  scenario all
+    python -m demo.cli report --out docs/report/test_results.md
+    python -m demo.cli gen-samples                 # sinh lại sample/ (khoá demo, chứng chỉ, chữ ký mẫu, logo.png)
+"""
+from __future__ import annotations
+
+import argparse
+import struct
 import sys
+import zlib
+from pathlib import Path
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, ROOT)
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+from core import key_io
+from core.rsa_keygen import generate_keypair
+from core.signature import SCHEMES, sign_file, verify_file
+from core.step_logger import StepLogger
+from core.tiny_rsa import TinyRSA
+from core.utils import Timer, from_hex
+from demo import ROOT, SAMPLE
 
-from core.rsa_math import generate_keypair
-from core import rsa_full, rsa_mini
-from core import secure_message as sm
-from scenarios.s1_authentication import run_scenario_s1
-from scenarios.s2_nonrepudiation import run_scenario_s2
-from scenarios.s3_revocation import run_scenario_s3
-from scenarios.s4_replay import run_scenario_s4
-from scenarios.s5_key_substitution import run_scenario_s5
-from scenarios.s6_confidentiality import run_scenario_s6
-from scenarios.run_all import run_all
-from attacks import (small_n, forgery_no_padding, bleichenbacher_e3, hash_collision, weak_keys, crt_fault,
-                     confidentiality)
-from attacks.run_all import run_all as run_all_attacks
-from demo import avalanche, file_signer
+COLORS = {"head": "\033[1;34m", "ok": "\033[32m", "bad": "\033[31m", "dim": "\033[90m"}
+RESET = "\033[0m"
 
 
-def read_int(prompt, default):
-    """Đọc số nguyên, nhập sai hoặc để trống thì dùng giá trị mặc định (không bị crash)."""
-    raw = input(prompt).strip()
-    if not raw:
-        return default
-    try:
-        return int(raw)
-    except ValueError:
-        print(f"[Lỗi] '{raw}' không phải số nguyên, dùng mặc định {default}.")
-        return default
+def _color(text: str, level: str) -> str:
+    if level and sys.stdout.isatty():
+        return f"{COLORS[level]}{text}{RESET}"
+    return text
 
 
-def read_text(prompt, default):
-    raw = input(f"{prompt} [{default}]: ").strip()
-    return raw or default
+def print_steps(log: StepLogger) -> None:
+    for step in log:
+        lines = step.to_text().splitlines()
+        print(_color(lines[0], step.level))
+        for line in lines[1:]:
+            print(line)
 
 
-# Chức năng tương tác
-def interactive_sign():
-    print("\n--- KÝ & KIỂM TRA THÔNG ĐIỆP ---")
-    message = read_text("Nhập thông điệp cần ký", "Tôi đồng ý thanh toán 10.000.000 VNĐ")
-    mode = read_text("Khóa: (1) ngẫu nhiên theo số bit  (2) tự nhập p, q, e (bản thu nhỏ)", "1")
-    if mode == "2":
-        p, q, e = read_int("p = ", 61), read_int("q = ", 53), read_int("e = ", 17)
-        try:
-            priv, pub = generate_keypair(p=p, q=q, e=e)
-        except ValueError as err:
-            print("[Lỗi]", err)
-            return
-        h = rsa_mini.tiny_hash(message, pub[1])
-        print(f"N = {pub[1]}, d = {priv[0]}  (N nhỏ -> dùng bản thu nhỏ: h = SHA-256 mod N = {h})")
-        s = rsa_mini.show_mod_exp(h, priv[0], pub[1], "S", print)
-        print("Kiểm tra:", "HỢP LỆ" if rsa_mini.verify(h, s, pub) else "SAI")
-        other = read_text("Nhập thông điệp bên nhận nhận được (sửa thử)", message)
-        ok = rsa_mini.verify(rsa_mini.tiny_hash(other, pub[1]), s, pub)
-        print("Kết quả:", "HỢP LỆ" if ok else "BỊ TỪ CHỐI — nội dung khác bản đã ký")
-        print("[!] N nhỏ chỉ để minh họa: h chỉ có N giá trị -> dễ tìm va chạm; thực tế dùng N >= 2048 bit.")
-        return
-    bits = read_int("Số bit khóa (mặc định 2048): ", 2048)
-    scheme = "pss" if read_text("Lược đồ đệm: (1) PKCS#1 v1.5  (2) PSS", "1") == "2" else "pkcs1v15"
-    print(f"Đang sinh khóa {bits} bit...")
-    priv, pub = generate_keypair(keysize=bits)
-    print(f"e = {pub[0]}\nN = {hex(pub[1])[:50]}...")
-    if scheme == "pkcs1v15":
-        r = rsa_full.explain_sign(message, priv, pub)
-        print(f"[1] SHA-256(M)         = {r['hash']}")
-        print(f"[2] EM (đệm PKCS#1)    = {r['em'][:20]}...{r['em'][-90:]}")
-        print(f"[3] S = EM^d mod N     = {hex(r['signature'])[:50]}...")
-        print(f"[4] S^e mod N -> băm   = {r['hash_recovered']}")
-        sig = r["signature"]
+# ---- Lệnh ----------------------------------------------------------------------------------------------
+def cmd_tiny(p: int = 17, q: int = 11, e: int = 7, h: int | None = 88, message: str | None = None) -> None:
+    tiny = TinyRSA(p, q, e)
+    data: bytes | int = message.encode("utf-8") if message is not None else (88 if h is None else h)
+    log = StepLogger()
+    s = tiny.sign(data, log)
+    tiny.verify(data, s, log)
+    print_steps(log)
+
+
+def cmd_keygen(bits: int, out: Path, e: int = 65537, owner: str = "") -> None:
+    with Timer() as t:
+        pub, priv = generate_keypair(bits, e)
+    key_io.save_private_key(priv, out, owner)
+    pub_path = out.with_name(out.stem + ".pub.json")
+    key_io.save_public_key(pub, pub_path)
+    print(f"Sinh khoá {bits} bít trong {t.elapsed:.2f}s\n  khoá riêng  : {out}\n  khoá công khai: {pub_path}")
+    print(_color(f"  ⚠ {key_io.DEMO_WARNING}", "dim"))
+
+
+def cmd_sign(key: Path, infile: Path, out: Path | None, scheme: str, cert: Path | None, tsa_key: Path | None) -> Path:
+    priv = key_io.load_private_key(key)
+    with Timer() as t:
+        bundle = sign_file(infile, priv, scheme)
+    if cert is not None:
+        bundle.signer_certificate = key_io.read_json(cert)
+    if tsa_key is not None:
+        from pki.timestamp import TimestampAuthority
+        tsa_priv = key_io.load_private_key(tsa_key)
+        bundle.timestamp_token = TimestampAuthority("TSA ATBMTT", (tsa_priv.public_key, tsa_priv)).stamp(
+            bundle.signature).to_dict()
+    out = out or infile.with_name(infile.name + ".sig.json")
+    key_io.save_signature(bundle, out)
+    print(f"SHA-256  : {bundle.message_hash_hex}\nChữ ký   : {bundle.signature_hex[:64]}…\n"
+          f"Thời gian: {t.elapsed * 1000:.1f} ms\nĐã lưu   : {out}")
+    return out
+
+
+def cmd_verify(infile: Path, sig: Path, key: Path | None, root: Path | None) -> bool:
+    from pki.certificate import Certificate
+    from pki.chain_verify import verify_chain
+    from pki.timestamp import TimestampToken, verify_token
+    bundle = key_io.load_signature(sig)
+    if key is not None:
+        pub = key_io.load_public_key(key)
+        chain_ok = True
+    elif bundle.signer_certificate is not None:
+        cert = Certificate.from_dict(bundle.signer_certificate)
+        pub = cert.public_key
+        root_path = root or SAMPLE / "certs" / "root_ca.cert.json"
+        roots = [Certificate.from_dict(key_io.read_json(root_path))] if root_path.is_file() else []
+        at = None
+        if bundle.timestamp_token is not None:
+            token = TimestampToken.from_dict(bundle.timestamp_token)
+            tsa_path = SAMPLE / "keys" / "tsa.json"
+            if tsa_path.is_file():
+                ok = verify_token(token, from_hex(bundle.signature_hex), key_io.load_public_key(tsa_path))
+                print(_color(f"Dấu thời gian TSA: {'hợp lệ' if ok else 'KHÔNG hợp lệ'}", "ok" if ok else "bad"))
+                at = token.time if ok else None
+        chain = verify_chain(cert, [], roots, None, at)
+        chain_ok = chain.valid
+        print(_color(f"Chứng chỉ người ký '{cert.subject}': {chain.reason}", "ok" if chain.valid else "bad"))
     else:
-        sig = rsa_full.sign_message(message, priv, "pss")
-        sig2 = rsa_full.sign_message(message, priv, "pss")
-        print(f"[1] Chữ ký PSS lần 1   = {hex(sig)[:50]}...")
-        print(f"[2] Chữ ký PSS lần 2   = {hex(sig2)[:50]}...  (khác nhau do salt ngẫu nhiên)")
-    print("    Kiểm tra:", "HỢP LỆ" if rsa_full.verify_message(message, sig, pub, scheme) else "SAI")
-    other = read_text("Nhập thông điệp bên nhận nhận được (sửa thử 1 ký tự)", message)
-    ok = rsa_full.verify_message(other, sig, pub, scheme)
-    print("Kết quả:", "HỢP LỆ" if ok else "BỊ TỪ CHỐI — nội dung đã bị thay đổi")
+        raise SystemExit("Cần --key hoặc chữ ký có kèm chứng chỉ")
+    res = verify_file(infile, bundle, pub)
+    ok = res.valid and chain_ok
+    print(f"SHA-256(tệp): {res.computed_hash.hex() if res.computed_hash else '-'}")
+    print(_color(f"{'✅ HỢP LỆ' if ok else '❌ KHÔNG HỢP LỆ'}: {res.reason}", "ok" if ok else "bad"))
+    return ok
 
 
-def interactive_seal():
-    print("\n--- TÍNH BẢO MẬT: KÝ RỒI MÃ HÓA THÔNG ĐIỆP ---")
-    message = read_text("Nhập thông điệp bí mật", "Mật khẩu Wi-Fi phòng họp: ATBMTT@2026")
-    bits = read_int("Số bit khóa (>= 1024, mặc định 2048): ", 2048)
-    print("Đang sinh khóa ký của Thu Trang và khóa mã hóa của Thu Thủy...")
-    a_priv, a_pub = generate_keypair(keysize=bits)
-    b_priv, b_pub = generate_keypair(keysize=bits)
-    env = sm.seal(message, "Thu Trang", a_priv, "Thu Thủy", b_pub)
-    print("\n[Thu Trang -> Thu Thủy] Phong bì trên đường truyền (Mai Phương thấy):")
-    for k, v in env.items():
-        print(f"   {k:<5}: {v[:70]}{'...' if len(v) > 70 else ''}")
-    print("   (ek = C1: khóa phiên K bọc bằng RSA-OAEP khóa công khai Thu Thủy;"
-          " ct = C2: (P, S) mã hóa bằng khóa phiên K)")
-    e_priv, _ = generate_keypair(keysize=bits)
-    try:
-        sm.open_sealed(env, "Mai Phương", e_priv, {"Thu Trang": a_pub}.get)
-    except sm.SecureMessageError as err:
-        print(f"\n[Mai Phương] {err.reason}")
-    r = sm.open_sealed(env, "Thu Thủy", b_priv, {"Thu Trang": a_pub}.get)
-    print(f"[Thu Thủy] Giải mã: '{r['message'].decode()}'")
-    print(f"[Thu Thủy] Chữ ký hợp lệ, người gửi: {r['sender']} lúc {r['meta']['time']}")
+def cmd_pki_demo(bits: int = 1024) -> None:
+    from pki.ca import CertificateAuthority
+    from pki.chain_verify import verify_chain
+    root = CertificateAuthority.create("Root CA ATBMTT", bits)
+    root.self_signed_root()
+    inter = root.create_intermediate("Intermediate CA ATBMTT", bits)
+    alice = inter.issue("Alice", generate_keypair(bits)[0])
+    for c in (root.certificate, inter.certificate, alice):
+        print(_color(f"--- Chứng chỉ của {c.subject} ---", "head"))
+        print(c.describe())
+    res = verify_chain(alice, [inter.certificate], [root.certificate], inter.publish_crl())
+    print(_color(f"Kiểm tra chuỗi: {res.reason}", "ok" if res.valid else "bad"))
+    inter.revoke(alice.serial)
+    res = verify_chain(alice, [inter.certificate], [root.certificate], inter.publish_crl())
+    print(_color(f"Sau khi thu hồi: {res.reason}", "ok" if res.valid else "bad"))
 
 
-def _ask_file(prompt):
-    path = read_text(prompt, file_signer.DEFAULT_SAMPLE)
-    if not os.path.isfile(path):
-        print("[Lỗi] Không tìm thấy tệp.")
+def _run_registry(package: str, name: str, **kw) -> None:
+    mod = __import__(package)
+    names = [m for m, _ in mod.REGISTRY] if name == "all" else [name]
+    for n in names:
+        log = StepLogger()
+        mod.load(n).run(log, **kw)
+        print_steps(log)
+        print()
+
+
+# ---- Sinh dữ liệu mẫu ----------------------------------------------------------------------------------
+HELLO = "Xin chào! Đây là tệp mẫu để thử ký và kiểm tra chữ ký RSA.\n"
+
+
+def make_logo_png(size: int = 320) -> bytes:
+    """Ảnh PNG tự vẽ (không bản quyền): nền chuyển màu hồng–vàng, vòng tròn và chữ 'RSA' dạng khối, kèm nhiễu nhẹ."""
+    glyphs = {"R": ["1110", "1001", "1110", "1010", "1001"], "S": ["0111", "1000", "0110", "0001", "1110"],
+              "A": ["0110", "1001", "1111", "1001", "1001"]}
+    cell, x0, y0 = size // 22, size // 2 - 7 * (size // 22), size // 2 - 5 * (size // 44)
+    seed = 20261029
+    raw = bytearray()
+    for y in range(size):
+        raw.append(0)
+        for x in range(size):
+            seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
+            noise = (seed >> 16) % 24 - 12
+            t = (x + y) / (2 * size)
+            r, g, b = 244 + (255 - 244) * t, 168 + (248 - 168) * t, 208 + (167 - 208) * t
+            dx, dy = x - size / 2, y - size / 2
+            if abs((dx * dx + dy * dy) ** 0.5 - size * 0.4) < size * 0.025:
+                r, g, b = 194, 24, 91
+            gx, gy = (x - x0) // cell, (y - y0) // cell
+            if 0 <= gy < 5 and 0 <= gx < 14 and gx % 5 < 4:
+                if glyphs["RSA"[gx // 5]][gy][gx % 5] == "1":
+                    r, g, b = 90, 26, 60
+            raw += bytes(max(0, min(255, int(v) + noise)) for v in (r, g, b))
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(bytes(raw), 9)) + chunk(b"IEND", b""))
+
+
+def gen_samples(bits: int = 2048, say=print) -> None:
+    from pki.ca import CertificateAuthority
+    from pki.timestamp import TimestampAuthority
+    msgs, keys, certs, sigs = (SAMPLE / d for d in ("messages", "keys", "certs", "signatures"))
+    for d in (msgs, keys, certs, sigs, SAMPLE / "images"):
+        d.mkdir(parents=True, exist_ok=True)
+    (msgs / "hello.txt").write_bytes(HELLO.encode("utf-8"))
+    contract = (msgs / "contract.txt").read_bytes()
+    tampered = contract.replace(b"2.000.000.000", b"8.000.000.000", 1)
+    (msgs / "contract_tampered.txt").write_bytes(tampered)
+    say(f"messages/: hello.txt, contract.txt, contract_tampered.txt (khác {sum(a != b for a, b in zip(contract, tampered))} byte)")
+    logo = make_logo_png()
+    (SAMPLE / "images" / "logo.png").write_bytes(logo)
+    say(f"images/logo.png: {len(logo) // 1024} KB")
+
+    pairs = {}
+    for name in ("alice_sign", "bob_sign", "bob_enc", "root_ca", "tsa"):
+        pairs[name] = generate_keypair(bits)
+        key_io.save_private_key(pairs[name][1], keys / f"{name}.json", owner=name)
+        say(f"keys/{name}.json ({bits} bít)")
+    (keys / "README.md").write_bytes(
+        "# Khoá DEMO\n\nCác tệp trong thư mục này là **khoá demo cho bài tập, KHÔNG dùng thật**. "
+        "Khoá riêng được lưu không mã hoá. Sinh lại bằng `python -m demo.cli gen-samples`.\n".encode("utf-8"))
+
+    root = CertificateAuthority("Root CA ATBMTT", pairs["root_ca"])
+    key_io.write_json(certs / "root_ca.cert.json", root.self_signed_root().to_dict())
+    alice_cert = root.issue("Alice", pairs["alice_sign"][0], days=730)
+    for fname, cert in (("alice.cert.json", alice_cert), ("bob.cert.json", root.issue("Bob", pairs["bob_sign"][0], 730)),
+                        ("tsa.cert.json", root.issue("TSA ATBMTT", pairs["tsa"][0], 730))):
+        key_io.write_json(certs / fname, cert.to_dict())
+    say("certs/: root_ca, alice, bob, tsa (.cert.json)")
+
+    bundle = sign_file(msgs / "contract.txt", pairs["alice_sign"][1])
+    bundle.signer_certificate = alice_cert.to_dict()
+    bundle.timestamp_token = TimestampAuthority("TSA ATBMTT", pairs["tsa"]).stamp(bundle.signature).to_dict()
+    key_io.save_signature(bundle, sigs / "contract.txt.sig.json")
+    say("signatures/contract.txt.sig.json (Alice ký, kèm chứng chỉ + dấu thời gian)")
+
+
+# ---- Menu tương tác ------------------------------------------------------------------------------------
+MENU = """
+==================== HỆ CHỮ KÝ ĐIỆN TỬ RSA ====================
+1. Tiny RSA — ký/kiểm tra từng bước (p=17, q=11, e=7)
+2. Sinh cặp khoá RSA (1024/2048/3072)
+3. Ký tệp
+4. Kiểm tra chữ ký tệp
+5. PKI: tạo CA, cấp chứng chỉ, thu hồi
+6. Chạy tấn công (chọn từ danh sách)
+7. Chạy kịch bản chứng thực / chống chối bỏ
+8. Benchmark
+9. Chạy kiểm thử đối chiếu (bảng từ test/report.py)
+0. Thoát"""
+
+
+def _ask(prompt: str, default: str = "") -> str:
+    s = input(f"{prompt}{f' [{default}]' if default else ''}: ").strip()
+    return s or default
+
+
+def _pick(registry) -> str | None:
+    for i, (_, title) in enumerate(registry, 1):
+        print(f"  {i}. {title}")
+    print(f"  {len(registry) + 1}. Tất cả")
+    c = _ask("Chọn", "1")
+    if not c.isdigit() or not 1 <= int(c) <= len(registry) + 1:
         return None
-    return path
+    return "all" if int(c) == len(registry) + 1 else registry[int(c) - 1][0]
 
 
-def file_sign_menu():
-    path = _ask_file("Đường dẫn tệp cần ký")
-    if path:
-        file_signer.demo_sign_file(path, keysize=read_int("Số bit khóa (mặc định 2048): ", 2048))
-
-
-def file_seal_menu():
-    path = _ask_file("Đường dẫn tệp cần ký rồi mã hóa")
-    if path:
-        file_signer.demo_seal_file(path, keysize=read_int("Số bit khóa (mặc định 2048): ", 2048))
-
-
-def attack_small_n_menu():
-    print("\n--- ATTACK: PHÂN TÍCH N NHỎ ---")
-    n_val = read_int("Nhập số n cần phân tích (mặc định 3233): ", 3233)
-    e_val = read_int("Nhập e công khai (mặc định 17): ", 17)
-    try:
-        small_n.demo_small_n(n_val, e_val)
-    except ValueError:
-        print("[Kết quả] Không phân tích được (n nguyên tố) hoặc e không nguyên tố cùng nhau với phi(n).")
-
-
-def run_full_tests():
-    import subprocess
-    real = input("Bật REAL (khóa 2048 bit, chậm hơn)? [y/N]: ").strip().lower() == "y"
-    env = dict(os.environ, REAL="1" if real else "0")
-    subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"], cwd=ROOT, env=env)
-
-
-def run_benchmark_menu():
-    from demo import benchmark
-    real = input("Chạy chế độ REAL (khóa tới 3072 bit, chậm hơn)? [y/N]: ").strip().lower() == "y"
-    benchmark.run_benchmark(real=real)
-
-
-def run_cross_check():
-    sys.path.insert(0, os.path.join(ROOT, "tests"))
-    import cross_check
-    cross_check.run()
-
-
-MENU = [
-    ("THUẬT TOÁN & DỮ LIỆU THẬT", [
-        ("1", "RSA thu nhỏ tính tay (p=17, q=11, e=7, M=88) — in từng bước", lambda: rsa_mini.run_demo()),
-        ("2", "Tự nhập thông điệp & khóa: KÝ và KIỂM TRA (PKCS#1 v1.5 / PSS)", interactive_sign),
-        ("3", "Hiệu ứng thác lũ — vì sao ký trên giá trị băm", lambda: avalanche.run_demo()),
-        ("4", "Ký & kiểm tra một TỆP (ảnh / văn bản)", file_sign_menu),
-        ("5", "Tự nhập thông điệp: KÝ RỒI MÃ HÓA / GIẢI MÃ (tính bảo mật)", interactive_seal),
-        ("6", "Ký rồi mã hóa một TỆP, giải mã lại", file_seal_menu),
-    ]),
-    ("KỊCH BẢN AN TOÀN", [
-        ("7", "S1: Xác thực người dùng (Challenge-Response)", run_scenario_s1),
-        ("8", "S2: Chống chối bỏ (CA + TSA, đối chiếu HMAC)", run_scenario_s2),
-        ("9", "S3: Khóa bị lộ, thu hồi (CRL), dấu thời gian", run_scenario_s3),
-        ("10", "S4: Tấn công phát lại — nonce & thời điểm", run_scenario_s4),
-        ("11", "S5: Tấn công thay thế khóa công khai", run_scenario_s5),
-        ("12", "S6: TÍNH BẢO MẬT — chỉ ký / ký rồi mã hóa", run_scenario_s6),
-        ("13", "Chạy toàn bộ S1-S6 (run_all)", lambda: run_all()),
-    ]),
-    ("TẤN CÔNG — LƯỢC ĐỒ KÝ & HÀM BĂM", [
-        ("14", "Phân tích modulus N nhỏ -> lộ khóa riêng", attack_small_n_menu),
-        ("15", "Giả mạo tồn tại (RSA thuần: chọn S, tính M = S^e)",
-         lambda: forgery_no_padding.demo_existential_forgery()),
-        ("16", "Giả mạo nhân tính khi không đệm (S1*S2)", lambda: forgery_no_padding.demo_no_padding_forgery()),
-        ("17", "Bleichenbacher e=3 (bộ kiểm tra đệm lỏng lẻo)", lambda: bleichenbacher_e3.demo_bleichenbacher()),
-        ("18", "Va chạm hàm băm — nghịch lý ngày sinh (2 hợp đồng, 1 chữ ký)",
-         lambda: hash_collision.demo_hash_collision()),
-    ]),
-    ("TẤN CÔNG — SINH KHÓA, QUẢN LÝ KHÓA, THIẾT BỊ KÝ", [
-        ("19", "Phân tích Fermat khi p, q quá gần nhau", lambda: weak_keys.demo_fermat()),
-        ("20", "Hai khóa chung thừa số nguyên tố -> gcd phá cả hai", lambda: weak_keys.demo_shared_prime()),
-        ("21", "Dùng chung modulus N -> đồng nghiệp tính được khóa riêng", lambda: weak_keys.demo_common_modulus()),
-        ("22", "Lỗi phần cứng khi ký bằng CRT -> 1 chữ ký lỗi lộ khóa", lambda: crt_fault.demo_crt_fault()),
-    ]),
-    ("TẤN CÔNG — TÍNH BẢO MẬT", [
-        ("23", "Tấn công từ điển: RSA sách giáo khoa vs OAEP", lambda: confidentiality.demo_dictionary()),
-        ("24", "Ký song song mã hóa làm lộ nội dung", lambda: confidentiality.demo_encrypt_and_sign_leak()),
-        ("25", "Håstad broadcast (e=3, cùng bản rõ gửi 3 người)", lambda: confidentiality.demo_hastad()),
-        ("26", "Dùng chung khóa ký & giải mã -> 'nhờ ký' = giải mã hộ",
-         lambda: confidentiality.demo_same_key_sign_decrypt()),
-        ("27", "Chạy toàn bộ 13 tấn công + bảng tổng kết", lambda: run_all_attacks()),
-    ]),
-    ("KIỂM THỬ & ĐÁNH GIÁ", [
-        ("28", "Đối chiếu test vector NIST / RFC / thư viện chuẩn", run_cross_check),
-        ("29", "Benchmark tốc độ theo kích thước khóa và dữ liệu", run_benchmark_menu),
-        ("30", "Chạy bộ test (tests/)", run_full_tests),
-    ]),
-]
-ACTIONS = {key: fn for _, items in MENU for key, _, fn in items}
-
-
-def menu():
-    print("\n" + "=" * 70)
-    print("     HỆ CHỮ KÝ ĐIỆN TỬ RSA — DEMO AN TOÀN BẢO MẬT THÔNG TIN")
-    print("=" * 70)
-    for title, items in MENU:
-        print(f" {title}")
-        for key, label, _ in items:
-            print(f"  [{key:>2}] {label}")
-    print("  [ 0] Thoát chương trình")
-    print("=" * 70)
-
-
-def main():
+def menu() -> None:
+    import attacks
+    import scenarios
     while True:
+        print(MENU)
+        choice = _ask("Chọn")
+        try:
+            if choice == "0":
+                return
+            if choice == "1":
+                v = _ask("Giá trị h (số) hoặc thông điệp (chữ)", "88")
+                cmd_tiny(int(_ask("p", "17")), int(_ask("q", "11")), int(_ask("e", "7")),
+                         h=int(v) if v.isdigit() else None, message=None if v.isdigit() else v)
+            elif choice == "2":
+                bits = int(_ask("Số bít (1024/2048/3072)", "2048"))
+                cmd_keygen(bits, Path(_ask("Lưu khoá riêng vào", str(SAMPLE / "keys" / "my_key.json"))))
+            elif choice == "3":
+                cmd_sign(Path(_ask("Tệp khoá riêng", str(SAMPLE / "keys" / "alice_sign.json"))),
+                         Path(_ask("Tệp cần ký", str(SAMPLE / "messages" / "contract.txt"))), None,
+                         _ask("Lược đồ (pkcs1v15/pss)", "pkcs1v15"), None, None)
+            elif choice == "4":
+                f = Path(_ask("Tệp cần kiểm tra", str(SAMPLE / "messages" / "contract.txt")))
+                cmd_verify(f, Path(_ask("Tệp chữ ký", str(f) + ".sig.json")), None, None)
+            elif choice == "5":
+                cmd_pki_demo()
+            elif choice == "6":
+                name = _pick(attacks.REGISTRY)
+                if name:
+                    _run_registry("attacks", name, defended=_ask("Bật phòng chống? (c/k)", "k").lower() == "c")
+            elif choice == "7":
+                name = _pick(scenarios.REGISTRY)
+                if name:
+                    _run_registry("scenarios", name)
+            elif choice == "8":
+                from demo import benchmark
+                benchmark.main(["--quick"])
+            elif choice == "9":
+                from test import report
+                rows = report.build_report()
+                print(report.to_console(rows))
+                if _ask("Xuất docs/report/test_results.md? (c/k)", "k").lower() == "c":
+                    print("Đã ghi", report.write_markdown(rows, ROOT / "docs" / "report" / "test_results.md"))
+        except (ValueError, OSError, KeyError) as err:
+            print(_color(f"Lỗi: {err}", "bad"))
+
+
+def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    ap = argparse.ArgumentParser(prog="python -m demo.cli", description="Hệ chữ ký điện tử RSA — CLI")
+    sub = ap.add_subparsers(dest="cmd")
+    sub.add_parser("menu", help="menu số (mặc định)")
+    t = sub.add_parser("tiny", help="Tiny RSA từng bước")
+    t.add_argument("--p", type=int, default=17)
+    t.add_argument("--q", type=int, default=11)
+    t.add_argument("--e", type=int, default=7)
+    t.add_argument("--h", type=int, default=88)
+    t.add_argument("--message")
+    k = sub.add_parser("keygen", help="sinh cặp khoá")
+    k.add_argument("--bits", type=int, default=2048)
+    k.add_argument("--e", type=int, default=65537)
+    k.add_argument("--out", type=Path, required=True)
+    k.add_argument("--owner", default="")
+    s = sub.add_parser("sign", help="ký tệp → *.sig.json")
+    s.add_argument("--key", type=Path, required=True)
+    s.add_argument("--in", dest="infile", type=Path, required=True)
+    s.add_argument("--out", type=Path)
+    s.add_argument("--scheme", choices=SCHEMES, default="pkcs1v15")
+    s.add_argument("--cert", type=Path, help="chứng chỉ người ký (.cert.json) gắn vào chữ ký")
+    s.add_argument("--tsa-key", type=Path, help="khoá TSA để đóng dấu thời gian")
+    v = sub.add_parser("verify", help="kiểm tra chữ ký tệp")
+    v.add_argument("--in", dest="infile", type=Path, required=True)
+    v.add_argument("--sig", type=Path, required=True)
+    v.add_argument("--key", type=Path, help="khoá công khai (bỏ trống: dùng chứng chỉ trong chữ ký)")
+    v.add_argument("--root", type=Path, help="chứng chỉ root tin cậy (mặc định sample/certs/root_ca.cert.json)")
+    sub.add_parser("pki", help="demo PKI: root, intermediate, cấp, thu hồi")
+    a = sub.add_parser("attack", help="chạy tấn công (tên module hoặc all)")
+    a.add_argument("name")
+    a.add_argument("--defended", action="store_true")
+    sc = sub.add_parser("scenario", help="chạy kịch bản (tên module hoặc all)")
+    sc.add_argument("name")
+    b = sub.add_parser("benchmark", help="đo hiệu năng")
+    b.add_argument("--quick", action="store_true")
+    r = sub.add_parser("report", help="bảng đối chiếu kiểm thử")
+    r.add_argument("--out", type=Path)
+    r.add_argument("--slow", action="store_true")
+    g = sub.add_parser("gen-samples", help="sinh lại sample/")
+    g.add_argument("--bits", type=int, default=2048)
+    args = ap.parse_args(argv)
+
+    if args.cmd in (None, "menu"):
         menu()
-        try:
-            choice = input(f"Nhập lựa chọn của bạn (0-{len(ACTIONS)}): ").strip()
-        except EOFError:
-            break
-        if choice == "0":
-            print("Đã thoát chương trình.")
-            break
-        action = ACTIONS.get(choice)
-        if action is None:
-            print("[Lỗi] Lựa chọn không hợp lệ!")
-        else:
-            try:
-                action()
-            except KeyboardInterrupt:
-                print("\n[Đã dừng]")
-            except Exception as err:          # demo trực tiếp: không để chương trình sập
-                print(f"[Lỗi] {type(err).__name__}: {err}")
-        try:
-            input("\nNhấn Enter để tiếp tục...")
-        except EOFError:
-            break
+    elif args.cmd == "tiny":
+        cmd_tiny(args.p, args.q, args.e, args.h, args.message)
+    elif args.cmd == "keygen":
+        cmd_keygen(args.bits, args.out, args.e, args.owner)
+    elif args.cmd == "sign":
+        cmd_sign(args.key, args.infile, args.out, args.scheme, args.cert, args.tsa_key)
+    elif args.cmd == "verify":
+        return 0 if cmd_verify(args.infile, args.sig, args.key, args.root) else 1
+    elif args.cmd == "pki":
+        cmd_pki_demo()
+    elif args.cmd == "attack":
+        _run_registry("attacks", args.name, defended=args.defended)
+    elif args.cmd == "scenario":
+        _run_registry("scenarios", args.name)
+    elif args.cmd == "benchmark":
+        from demo import benchmark
+        return benchmark.main(["--quick"] if args.quick else [])
+    elif args.cmd == "report":
+        from test import report
+        return report.main((["--out", str(args.out)] if args.out else []) + (["--slow"] if args.slow else []))
+    elif args.cmd == "gen-samples":
+        gen_samples(args.bits)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

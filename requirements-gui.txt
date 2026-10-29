@@ -1,4 +1,0 @@
-# Thư viện giao diện cho demo/gui/ (Qt 6). Chỉ dùng để vẽ giao diện.
-# Toàn bộ thuật toán (RSA, SHA-256, PKCS#1 v1.5 / PSS, chứng chỉ) tự cài đặt trong core/ và pki/,
-# không dùng thư viện ngoài. CLI, kịch bản, tấn công và bộ test chạy được khi không cài gói này.
-PySide6-Essentials>=6.5

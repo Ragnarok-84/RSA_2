@@ -1,0 +1,5 @@
+sample/** -text
+*.sig.json -text
+*.png binary
+*.bat text eol=crlf
+*.sh text eol=lf
