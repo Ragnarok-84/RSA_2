@@ -1,8 +1,3 @@
-"""Sinh cặp khoá RSA.
-
-    n = p·q,  φ(n) = (p − 1)(q − 1),  gcd(e, φ(n)) = 1,  d = e⁻¹ mod φ(n)
-    dP = d mod (p − 1),  dQ = d mod (q − 1),  qInv = q⁻¹ mod p      (tham số CRT, RFC 8017 §3.2)
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass

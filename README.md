@@ -24,7 +24,6 @@ Yêu cầu Python **3.11 trở lên**.
 | Thư viện | Dùng để |
 | --- | --- |
 | `PySide6` | Giao diện đồ hoạ `demo/gui/` (chỉ vẽ giao diện) |
-| `matplotlib` | Render công thức trên GUI và biểu đồ benchmark |
 | `pytest`, `pytest-qt` | Bộ kiểm thử |
 | `cryptography` | Chỉ trong `test/` (đối chiếu) và AES-GCM của kịch bản S6 |
 
@@ -71,7 +70,7 @@ chuẩn Python; chạy từ thư mục gốc thì package của repo được ư
 | CLI menu số (dự phòng, không cần Qt) | `python -m demo.cli` |
 | Tiny RSA từng bước | `python -m demo.cli tiny --h 88` |
 | Sinh khoá | `python -m demo.cli keygen --bits 2048 --out sample/keys/my_key.json` |
-| Ký tệp | `python -m demo.cli sign --key sample/keys/alice_sign.json --in sample/messages/contract.txt` |
+| Ký tệp | `python -m demo.cli sign --key sample/keys/trang_sign.json --in sample/messages/contract.txt` |
 | Kiểm tra chữ ký | `python -m demo.cli verify --in sample/messages/contract.txt --sig sample/signatures/contract.txt.sig.json` |
 | Một tấn công / tất cả | `python -m demo.cli attack a4_small_e_attack [--defended]`, `python -m demo.run_all_attacks` |
 | Một kịch bản / tất cả | `python -m demo.cli scenario s3_non_repudiation_contract`, `python -m demo.cli scenario all` |
@@ -82,12 +81,12 @@ chuẩn Python; chạy từ thư mục gốc thì package của repo được ư
 
 | Tab | Nội dung |
 | --- | --- |
-| 1. Tiny RSA | Nhập $p, q, e$ và $h$ hoặc thông điệp; Ký / Kiểm tra; công thức render bằng matplotlib; bảng Euclid mở rộng và bảng bình phương và nhân ($i, b_i, c, f$); nút **Ví dụ slide** + **Từng bước ▶** để thuyết trình |
-| 2. Ký / Kiểm tra | Sinh khoá 1024/2048/3072 hoặc mở từ `sample/keys`; ký văn bản / tệp (xem trước ảnh) bằng PKCS#1 v1.5 / PSS; hiện $h$, EM, chữ ký, thời gian; lưu / mở `*.sig.json`; Mallory lật 1 bít; kéo-thả tệp |
-| 3. PKI | Cây Root CA → Intermediate CA → Alice / Bob (+ TSA); cấp, thu hồi, xem chứng chỉ; Alice ký hợp đồng có dấu thời gian, trọng tài kiểm tra |
+| 1. Tiny RSA | Nhập $p, q, e$ và $h$ hoặc thông điệp; Ký / Kiểm tra; công thức hiển thị bằng Unicode; bảng Euclid mở rộng và bảng bình phương và nhân ($i, b_i, c, f$); có thể hiện từng bước để thuyết trình |
+| 2. Ký / Kiểm tra | Sinh khoá 1024/2048/3072 hoặc mở từ `sample/keys`; ký văn bản / tệp (xem trước ảnh) bằng PKCS#1 v1.5 / PSS; hiện $h$, EM, chữ ký, thời gian; lưu / mở `*.sig.json`; Phương (Attacker) có thể lật 1 bít; kéo-thả tệp |
+| 3. PKI | Cây Root CA → Intermediate CA → Trang (Sender) / Thủy (Receiver) (+ TSA); cấp, thu hồi, xem chứng chỉ; Trang ký hợp đồng có dấu thời gian, Linh (Third Party) kiểm tra |
 | 4. Tấn công & Kịch bản | Danh sách S1–S6 và A1–A9; ô **Bật biện pháp phòng chống**; kết quả từng bước |
-| 5. Benchmark | Thời gian sinh khoá / ký (CRT và không CRT) / kiểm tra theo kích thước khoá, thời gian băm theo kích thước tệp; xuất CSV, PNG |
-| 6. Kiểm thử | Bảng đối chiếu từ `test/report.py` (Ours / Reference / Nguồn / Khớp); xuất Markdown |
+| 5. Benchmark | Chạy các phép đo sinh khoá / ký (CRT và không CRT) / kiểm tra theo kích thước khoá và băm theo kích thước tệp; xem kết quả trong bảng |
+| 6. Kiểm thử | Chạy các ca kiểm thử và xem kết quả đối chiếu trực tiếp trong bảng |
 
 Tác vụ chậm chạy trong `QThreadPool` nên giao diện không bị treo. Giao diện dùng style Fusion + `style.qss`
 (nền kính mờ hồng – vàng), hiển thị giống nhau trên Windows và macOS (tự co giãn theo DPI / Retina).
@@ -115,6 +114,13 @@ python -m test.report --out docs/report/test_results.md     # thêm --slow cho c
 ```
 
 Cho nhóm: `python -m pytest -m "not slow"` sau mỗi lần sửa code; `python -m pytest` chạy toàn bộ.
+
+## Người tham gia
+
+- **Trang (Sender):** tạo và gửi thông điệp, ký bằng khoá riêng.
+- **Thủy (Receiver):** nhận thông điệp, kiểm tra chữ ký bằng khoá công khai của Trang.
+- **Phương (Attacker):** mô phỏng sửa thông điệp, giả mạo hoặc chuyển tiếp trái phép.
+- **Linh (Third Party):** người nhận thay thế trong kịch bản chuyển tiếp và bên thứ ba trong ví dụ.
 
 ## Cấu trúc thư mục
 

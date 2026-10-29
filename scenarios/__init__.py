@@ -1,8 +1,3 @@
-"""Kịch bản sN_*: chứng minh một thuộc tính an toàn khi hệ chữ ký được dùng ĐÚNG (kỳ vọng valid == True).
-
-Mỗi module có `run(logger=None, bits=...) -> ScenarioResult`. REGISTRY liệt kê theo đúng thứ tự số,
-dùng cho GUI, CLI và thứ tự chương mục trong báo cáo.
-"""
 from __future__ import annotations
 
 import importlib
@@ -36,6 +31,5 @@ def load(module_name: str) -> ModuleType:
 
 
 def sample_bytes(relative: str, fallback: bytes) -> bytes:
-    """Đọc tệp mẫu trong sample/ (nhị phân); thiếu tệp thì dùng nội dung dự phòng."""
     path = SAMPLE_DIR / relative
     return path.read_bytes() if path.is_file() else fallback

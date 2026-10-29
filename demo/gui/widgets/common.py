@@ -1,4 +1,3 @@
-"""Hằng số, hộp thoại và widget nhỏ dùng chung: phông chữ, màu, nút, hàng ngang, ô kết quả tô màu, khung chọn dữ liệu."""
 from __future__ import annotations
 
 import sys
@@ -24,9 +23,6 @@ UI_PX = 13
 GREEN, RED, BLUE, GREY, ROSE, PLUM = "#1b7f3b", "#c62828", "#1f4e9c", "#666666", "#C2185B", "#5A1A3C"
 LEVEL_COLORS = {"ok": GREEN, "bad": RED, "head": BLUE, "dim": GREY}
 SAMPLE = ROOT / "sample"
-
-
-# ---- Hộp thoại (test GUI thay các hàm này để không bật cửa sổ) ----------------------------------------
 def show_info(parent, title: str, text: str) -> None:
     QMessageBox.information(parent, title, text)
 
@@ -37,9 +33,6 @@ def show_warning(parent, title: str, text: str) -> None:
 
 def show_error(parent, title: str, text: str) -> None:
     QMessageBox.critical(parent, title, text)
-
-
-# ---- Tiện ích dựng giao diện ----------------------------------------------------------------------------
 def mono_font(bold: bool = False) -> QFont:
     f = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
     f.setPixelSize(MONO_PX)
@@ -48,12 +41,10 @@ def mono_font(bold: bool = False) -> QFont:
 
 
 def amp(text: str) -> str:
-    """Qt coi '&' là phím tắt; nhân đôi để hiện đúng ký tự."""
     return text.replace("&", "&&")
 
 
 def hbox(*widgets, spacing: int = 6) -> QHBoxLayout:
-    """Hàng ngang; phần tử None là khoảng giãn."""
     lay = QHBoxLayout()
     lay.setContentsMargins(0, 0, 0, 0)
     lay.setSpacing(spacing)
@@ -81,7 +72,6 @@ def bold_label(text: str) -> QLabel:
 
 
 def glass(widget):
-    """Bỏ nền đặc của viewport (bảng, ô văn bản) để ảnh nền lộ qua."""
     widget.viewport().setAutoFillBackground(False)
     return widget
 
@@ -96,7 +86,6 @@ def text_box(lines: int | None = None, read_only: bool = False) -> QPlainTextEdi
 
 
 class OutputBox(QPlainTextEdit):
-    """Ô kết quả: tô màu theo mức (ok / bad / head / dim) hoặc tự nhận dạng dòng ✓ / ✗."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -130,7 +119,6 @@ class OutputBox(QPlainTextEdit):
         self.ensureCursorVisible()
 
     def append_steps(self, log: StepLogger) -> None:
-        """In các bước của StepLogger: tiêu đề tô màu theo mức, công thức và giá trị thụt lề."""
         for step in log:
             lines = step.to_text().splitlines()
             self.append(lines[0] + "\n", step.level or None)
@@ -142,7 +130,6 @@ class OutputBox(QPlainTextEdit):
 
 
 class DataSource(QWidget):
-    """Khung chọn dữ liệu: gõ văn bản hoặc chọn tệp thật."""
 
     def __init__(self, title: str, lines: int = 5) -> None:
         super().__init__()
@@ -186,7 +173,6 @@ class DataSource(QWidget):
         return Path(self.path.text()) if self.file_mode.isChecked() and self.path.text().strip() else None
 
     def get(self) -> tuple[bytes, Path | None]:
-        """(dữ liệu, đường dẫn tệp hoặc None). ValueError nếu chưa nhập gì, OSError nếu không đọc được tệp."""
         if self.file_mode.isChecked():
             if not self.path.text().strip():
                 raise ValueError("Hãy chọn tệp trước.")
@@ -198,7 +184,6 @@ class DataSource(QWidget):
         return text.encode("utf-8"), None
 
     def read(self) -> tuple[bytes, Path | None] | None:
-        """Như get() nhưng hiện thông báo thay vì ném lỗi."""
         try:
             return self.get()
         except ValueError as err:

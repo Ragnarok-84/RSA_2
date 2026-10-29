@@ -1,9 +1,3 @@
-"""Phép ký / kiểm tra nguyên thuỷ RSASP1, RSAVP1 (RFC 8017 §5.2).
-
-Ký không CRT:   s = m^d mod n
-Ký có CRT:      s_p = m^dP mod p,  s_q = m^dQ mod q,  h = qInv·(s_p − s_q) mod p,  s = s_q + h·q
-Kiểm tra:       m' = s^e mod n
-"""
 from __future__ import annotations
 
 from core.number_theory import mod_pow

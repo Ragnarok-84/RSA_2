@@ -1,11 +1,3 @@
-"""A8 — Phát lại thông điệp đã ký.
-
-Mục tiêu: một lệnh "chuyển 1 triệu" ký hợp lệ được thực hiện nhiều lần.
-Điều kiện: phần được ký không có gì làm nó duy nhất; ngân hàng chỉ kiểm tra chữ ký.
-Mallory nghe lén (lệnh, chữ ký) rồi gửi lại y nguyên — chữ ký vẫn đúng.
-Phòng chống: đưa nonce / timestamp / số thứ tự VÀO phần được ký; bên nhận ghi nhớ nonce đã dùng và
-từ chối lệnh quá cũ. Sửa nonce để lách thì chữ ký không còn khớp.
-"""
 from __future__ import annotations
 
 import json
@@ -23,8 +15,8 @@ MAX_AGE = 300
 
 
 class Bank:
-    def __init__(self, alice_pub: RSAPublicKey, check_freshness: bool) -> None:
-        self.pub, self.check = alice_pub, check_freshness
+    def __init__(self, trang_pub: RSAPublicKey, check_freshness: bool) -> None:
+        self.pub, self.check = trang_pub, check_freshness
         self.used: set[str] = set()
         self.moved = 0
 
@@ -49,26 +41,26 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
     log.head(f"TẤN CÔNG A8: PHÁT LẠI ({'CÓ' if defended else 'KHÔNG'} nonce + timestamp trong phần được ký)")
     pub, priv = generate_keypair(bits)
     bank = Bank(pub, check_freshness=defended)
-    order_obj: dict = {"from": "Alice", "to": "Bob", "amount": 1_000_000}
+    order_obj: dict = {"from": "trang", "to": "thuy", "amount": 1_000_000}
     if defended:
         order_obj.update(nonce=secrets.token_hex(16), time=now())
     order = canonical_json(order_obj)
     sig = sign(order, priv)
-    log.log("[1] Alice ký lệnh chuyển tiền", r"S = \mathrm{Sign}_{d_A}(\mathrm{lenh})", order.decode())
+    log.log("[1] trang ký lệnh chuyển tiền", r"S = \mathrm{Sign}_{d_A}(\mathrm{lenh})", order.decode())
 
     results = [bank.submit(order, sig) for _ in range(3)]
     for i, (ok, why) in enumerate(results):
-        log.log(f"[{i + 2}] {'Alice gửi' if i == 0 else 'Mallory phát lại y nguyên'}", None, why,
+        log.log(f"[{i + 2}] {'trang gửi' if i == 0 else 'phuong phát lại y nguyên'}", None, why,
                 level="" if i == 0 else ("bad" if ok else "ok"))
 
     if defended:
         tweaked = dict(order_obj, nonce=secrets.token_hex(16))
         ok, why = bank.submit(canonical_json(tweaked), sig)
-        log.log("[5] Mallory đổi nonce mới để lách, giữ chữ ký cũ", None, why, level="bad" if ok else "ok")
+        log.log("[5] phuong đổi nonce mới để lách, giữ chữ ký cũ", None, why, level="bad" if ok else "ok")
 
     accepted = sum(ok for ok, _ in results)
     success = accepted > 1
-    log.note("Tổng tiền bị chuyển", f"{bank.moved:,} VNĐ (Alice chỉ muốn chuyển 1.000.000)")
+    log.note("Tổng tiền bị chuyển", f"{bank.moved:,} VNĐ (trang chỉ muốn chuyển 1.000.000)")
     summary = (f"Lệnh được thực hiện {accepted} lần." if success else "Thất bại: lệnh chỉ được thực hiện một lần.")
     (log.bad if success else log.ok)("[KẾT LUẬN] " + summary + " Phòng chống: nonce/timestamp/số thứ tự trong phần được ký.")
     return AttackResult(NAME, success, summary, {"defended": defended, "accepted": accepted, "moved": bank.moved})

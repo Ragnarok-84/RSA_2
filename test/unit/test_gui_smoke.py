@@ -30,8 +30,11 @@ def test_window_has_six_tabs(window):
 
 def test_tiny_h88_shows_s11(window):
     tab = window.tiny_tab
-    tab.slide_example()
-    tab.show_all()
+    tab.p.setValue(17)
+    tab.q.setValue(11)
+    tab.e.setValue(7)
+    tab.h.setValue(88)
+    tab.sign()
     assert tab.s.value() == 11
     assert any("s = 11" in t for t in tab.steps.card_texts())
     assert tab.euclid.rowCount() > 0 and tab.sm_sign.rowCount() == 5
@@ -41,7 +44,11 @@ def test_tiny_h88_shows_s11(window):
 
 def test_tiny_step_by_step(window):
     tab = window.tiny_tab
-    tab.slide_example()
+    tab.p.setValue(17)
+    tab.q.setValue(11)
+    tab.e.setValue(7)
+    tab.h.setValue(88)
+    tab.sign(reveal_all=False)
     assert tab.steps.shown == 0
     tab.next_step()
     tab.next_step()

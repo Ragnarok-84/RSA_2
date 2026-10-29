@@ -1,4 +1,4 @@
-# Ký (Alice, `core/signature.py`)
+# Ký (trang, `core/signature.py`)
 
 ```mermaid
 flowchart LR

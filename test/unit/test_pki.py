@@ -16,71 +16,71 @@ def world():
     root = CertificateAuthority.create("Root CA", BITS)
     root.self_signed_root(not_before=start)
     inter = root.create_intermediate("Intermediate CA", BITS, not_before=start)
-    alice_keys = generate_keypair(BITS)
-    alice = inter.issue("Alice", alice_keys[0], not_before=start)
-    return root, inter, alice, alice_keys
+    trang_keys = generate_keypair(BITS)
+    trang = inter.issue("trang", trang_keys[0], not_before=start)
+    return root, inter, trang, trang_keys
 
 
 def test_valid_chain(world):
-    root, inter, alice, _ = world
-    res = verify_chain(alice, [inter.certificate], [root.certificate])
-    assert res.valid and "Alice → Intermediate CA → Root CA" in res.reason
+    root, inter, trang, _ = world
+    res = verify_chain(trang, [inter.certificate], [root.certificate])
+    assert res.valid and "trang → Intermediate CA → Root CA" in res.reason
 
 
 def test_certificate_dict_roundtrip(world):
-    _, _, alice, _ = world
-    assert Certificate.from_dict(alice.to_dict()) == alice
-    assert "Alice" in alice.describe()
+    _, _, trang, _ = world
+    assert Certificate.from_dict(trang.to_dict()) == trang
+    assert "trang" in trang.describe()
 
 
 def test_missing_intermediate(world):
-    root, _, alice, _ = world
-    assert not verify_chain(alice, [], [root.certificate]).valid
+    root, _, trang, _ = world
+    assert not verify_chain(trang, [], [root.certificate]).valid
 
 
 def test_expired(world):
-    root, inter, alice, _ = world
-    res = verify_chain(alice, [inter.certificate], [root.certificate], at_time=now() + 400 * DAY)
+    root, inter, trang, _ = world
+    res = verify_chain(trang, [inter.certificate], [root.certificate], at_time=now() + 400 * DAY)
     assert not res.valid and "hết hạn" in res.reason
 
 
 def test_revoked_with_time(world):
-    root, inter, alice, _ = world
+    root, inter, trang, _ = world
     t_r = now() - 10
-    inter.revoke(alice.serial, at=t_r)
+    inter.revoke(trang.serial, at=t_r)
     crl = inter.publish_crl()
     try:
-        assert not verify_chain(alice, [inter.certificate], [root.certificate], crl).valid
-        assert verify_chain(alice, [inter.certificate], [root.certificate], crl, at_time=t_r - 1).valid
+        assert not verify_chain(trang, [inter.certificate], [root.certificate], crl).valid
+        assert verify_chain(trang, [inter.certificate], [root.certificate], crl, at_time=t_r - 1).valid
         tampered = CRL.from_dict({**crl.to_dict(), "revoked": {}})
-        res = verify_chain(alice, [inter.certificate], [root.certificate], tampered)
+        res = verify_chain(trang, [inter.certificate], [root.certificate], tampered)
         assert not res.valid and "CRL" in res.reason
     finally:
         inter.revoked.clear()
 
 
 def test_tampered_ca_signature(world):
-    root, inter, alice, _ = world
-    d = alice.to_dict()
-    d["subject"] = "Mallory"
+    root, inter, trang, _ = world
+    d = trang.to_dict()
+    d["subject"] = "phuong"
     res = verify_chain(Certificate.from_dict(d), [inter.certificate], [root.certificate])
     assert not res.valid and "không hợp lệ" in res.reason
-    sig = bytearray(bytes.fromhex(alice.signature_hex))
+    sig = bytearray(bytes.fromhex(trang.signature_hex))
     sig[-1] ^= 1
-    assert not verify_chain(Certificate.from_dict({**alice.to_dict(), "signature_hex": sig.hex()}),
+    assert not verify_chain(Certificate.from_dict({**trang.to_dict(), "signature_hex": sig.hex()}),
                             [inter.certificate], [root.certificate]).valid
 
 
 def test_untrusted_root_and_non_ca_issuer(world):
-    root, inter, alice, alice_keys = world
+    root, inter, trang, trang_keys = world
     evil = CertificateAuthority.create("Root CA", BITS)
     evil.self_signed_root()
-    fake = evil.issue("Alice", alice.public_key)
+    fake = evil.issue("trang", trang.public_key)
     assert not verify_chain(fake, [evil.certificate], [root.certificate]).valid
     leaf_pub, _ = generate_keypair(BITS)
-    not_ca = CertificateAuthority("Alice", alice_keys, alice)    # chứng chỉ Alice không có is_ca
-    child = not_ca.issue("Bob", leaf_pub)
-    res = verify_chain(child, [alice, inter.certificate], [root.certificate])
+    not_ca = CertificateAuthority("trang", trang_keys, trang)    # chứng chỉ trang không có is_ca
+    child = not_ca.issue("thuy", leaf_pub)
+    res = verify_chain(child, [trang, inter.certificate], [root.certificate])
     assert not res.valid and "không phải CA" in res.reason
 
 

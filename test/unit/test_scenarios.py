@@ -23,7 +23,7 @@ def test_registry_order():
 
 def test_s1_authentication():
     r = _run("s1_authentication")
-    assert r.details["alice_signature"] and not r.details["mallory_signature"]
+    assert r.details["trang_signature"] and not r.details["phuong_signature"]
 
 
 def test_s2_integrity_tamper():
@@ -33,7 +33,7 @@ def test_s2_integrity_tamper():
 
 def test_s3_non_repudiation_contract():
     r = _run("s3_non_repudiation_contract")
-    assert not r.details["bob_edits_contract"] and not r.details["backdated_token"]
+    assert not r.details["thuy_edits_contract"] and not r.details["backdated_token"]
 
 
 def test_s4_key_compromise():
@@ -43,7 +43,7 @@ def test_s4_key_compromise():
 
 def test_s5_hmac_vs_signature():
     r = _run("s5_hmac_vs_signature")
-    assert r.details["hmac_bob_forgery_accepted"] and not r.details["rsa_bob_forgery_accepted"]
+    assert r.details["hmac_thuy_forgery_accepted"] and not r.details["rsa_thuy_forgery_accepted"]
 
 
 def test_s5_hmac_matches_rfc4231_and_stdlib():
@@ -60,4 +60,4 @@ def test_s5_hmac_matches_rfc4231_and_stdlib():
 def test_s6_sign_then_encrypt():
     pytest.importorskip("cryptography")
     r = _run("s6_sign_then_encrypt")
-    assert r.details["bob_opens"] and not r.details["forward_accepted"]
+    assert r.details["thuy_opens"] and not r.details["forward_accepted"]

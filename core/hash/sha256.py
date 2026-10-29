@@ -1,9 +1,3 @@
-"""SHA-256 theo FIPS 180-4.
-
-- Đệm (§5.1.1): thêm bít 1 (byte 0x80), các bít 0 tới khi độ dài ≡ 448 (mod 512), rồi độ dài 64 bít big-endian.
-- 8 giá trị khởi tạo H^(0) (§5.3.3), 64 hằng số K_t (§4.2.2).
-- Lịch thông điệp W_t (§6.2.2 bước 1), 64 vòng nén (bước 3), cộng mod 2^32.
-"""
 from __future__ import annotations
 
 from pathlib import Path

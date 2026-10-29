@@ -1,11 +1,3 @@
-"""A3 — Va chạm hàm băm yếu (nghịch lý ngày sinh).
-
-Mục tiêu: một chữ ký Alice ký cho hợp đồng thật dùng được cho hợp đồng gian.
-Điều kiện: hệ thống dùng hàm băm 16 bít (core.hash.toy_hash.weak_hash16). Mallory tạo nhiều biến thể của cả
-hai hợp đồng (thêm dấu cách) và tìm hai biến thể cùng giá trị băm — chỉ cần khoảng 2^8 phép băm.
-Alice đọc bản thật (trông bình thường) và ký; Mallory gắn chữ ký đó vào bản gian.
-Phòng chống: hàm băm kháng va chạm (SHA-256: cần khoảng 2^128 phép băm).
-"""
 from __future__ import annotations
 
 import time
@@ -26,7 +18,6 @@ FRAUD = ("Bên A bán cho bên B lô hàng 100 máy tính với giá 150.000.000
 
 
 def variant(text: str, index: int) -> bytes:
-    """Biến thể thứ `index`: bít thứ i của index bằng 1 thì sau từ thứ i có 2 dấu cách thay vì 1."""
     words = text.split(" ")
     out = [words[0]]
     for i, w in enumerate(words[1:]):
@@ -35,12 +26,10 @@ def variant(text: str, index: int) -> bytes:
 
 
 def weak_digest(data: bytes) -> bytes:
-    """Đưa giá trị băm 16 bít vào khung 32 byte để dùng chung bộ đệm PKCS#1 (16 bít đầu, còn lại là 0)."""
     return weak_hash16(data).to_bytes(2, "big") + b"\x00" * 30
 
 
 def birthday_search(hash_fn, limit: int) -> tuple[bytes, bytes, int] | None:
-    """Lưu biến thể bản thật vào bảng băm, thử biến thể bản gian tới khi trùng. Trả (thật, gian, số phép băm)."""
     table: dict[bytes, bytes] = {}
     for i in range(limit):
         m = variant(HONEST, i)
@@ -59,7 +48,7 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
     log.head(f"TẤN CÔNG A3: VA CHẠM HÀM BĂM — hệ thống dùng {hash_name}")
     hash_fn = sha256 if defended else weak_digest
     pub, priv = generate_keypair(bits)
-    log.note("[1] Mallory soạn hai hợp đồng", f"THẬT: {HONEST}\nGIAN: {FRAUD}")
+    log.note("[1] phuong soạn hai hợp đồng", f"THẬT: {HONEST}\nGIAN: {FRAUD}")
 
     limit = 1 << 10
     t = time.perf_counter()
@@ -77,11 +66,11 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
                 f"Sau {tries} phép băm ({dt:.2f}s), thay vì 2^16 = 65536:\n"
                 f"H(thật) = {hash_fn(honest)[:2].hex()} = H(gian) = {hash_fn(fraud)[:2].hex()}")
         sig = sign_hash(hash_fn(honest), priv)
-        log.note("[3] Alice đọc bản thật (chỉ khác vài dấu cách) và ký")
+        log.note("[3] trang đọc bản thật (chỉ khác vài dấu cách) và ký")
         res = verify_hash(hash_fn(fraud), sig, pub)
         success = res.valid
-        log.log("[4] Mallory gắn chữ ký đó vào bản gian", None,
-                "HỢP LỆ: Alice bị ràng buộc bởi hợp đồng gian" if success else res.reason,
+        log.log("[4] phuong gắn chữ ký đó vào bản gian", None,
+                "HỢP LỆ: trang bị ràng buộc bởi hợp đồng gian" if success else res.reason,
                 level="bad" if success else "ok")
         details = {"defended": defended, "hashes": tries}
 

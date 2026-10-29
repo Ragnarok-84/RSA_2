@@ -1,9 +1,3 @@
-"""Chứng chỉ số (mô phỏng X.509 bằng JSON chuẩn tắc): gắn danh tính `subject` với một khoá công khai.
-
-Phần được CA ký (TBS — To-Be-Signed) là toàn bộ trường trừ `signature_hex`, serialize bằng
-core.utils.canonical_json để người ký và người kiểm tra băm cùng một chuỗi byte.
-Thời gian là số giây Unix (int).
-"""
 from __future__ import annotations
 
 import time
@@ -49,7 +43,6 @@ class Certificate:
         }
 
     def tbs_bytes(self) -> bytes:
-        """Chuỗi byte CA ký: canonical_json(TBS)."""
         return canonical_json(self.tbs_dict())
 
     def to_dict(self) -> dict:
@@ -70,7 +63,6 @@ class Certificate:
         return self.not_before <= t <= self.not_after
 
     def fingerprint(self) -> str:
-        """SHA-256 của toàn bộ chứng chỉ (kể cả chữ ký), 16 ký tự hex đầu."""
         return sha256(canonical_json(self.to_dict())).hex()[:16]
 
     def describe(self) -> str:

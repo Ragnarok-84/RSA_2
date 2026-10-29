@@ -1,11 +1,3 @@
-"""A4 — e = 3 và bộ kiểm tra PKCS#1 v1.5 lỏng lẻo (Bleichenbacher, CRYPTO 2006 rump session).
-
-Mục tiêu: giả chữ ký của Alice cho thông điệp tuỳ ý mà không cần khoá riêng.
-Điều kiện: khoá công khai có e = 3, modulus đủ dài (3072 bít), và bộ kiểm tra chỉ dò
-00 01 FF… 00 DigestInfo H rồi dừng, không kiểm tra H nằm sát cuối EM (core.padding.pkcs1_v15.verify_sloppy).
-Mallory dựng EM = 00 01 FF 00 DigestInfo H || rác, lấy s = ⌈∛EM⌉: s³ giữ nguyên phần đầu, chỉ khác ở phần rác.
-Phòng chống: verify_strict (dựng lại EM và so TOÀN BỘ), dùng e = 65537.
-"""
 from __future__ import annotations
 
 from core.hash.sha256 import sha256
@@ -22,7 +14,6 @@ NAME = "A4: e = 3 + kiểm tra lỏng (Bleichenbacher 2006)"
 
 
 def forge(pub: RSAPublicKey, message_hash: bytes) -> int:
-    """Tạo chữ ký giả cho giá trị băm bằng căn bậc ba nguyên (chỉ cần khoá công khai, e = 3)."""
     if pub.e != 3:
         raise ValueError("Tấn công này cần e = 3")
     k = byte_len(pub.n)
@@ -40,12 +31,12 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 30
     checker = "verify_strict" if defended else "verify_sloppy"
     log.head(f"TẤN CÔNG A4: e = 3, BỘ KIỂM TRA {checker}")
     pub, _ = generate_keypair(bits, e=3)
-    message = "Alice chuyển toàn bộ cổ phần công ty cho Mallory.".encode("utf-8")
+    message = "trang chuyển toàn bộ cổ phần công ty cho phuong.".encode("utf-8")
     h = sha256(message)
-    log.note(f"[1] Khoá công khai của Alice: e = 3, n {bits} bít. Mallory muốn chữ ký cho", message.decode())
+    log.note(f"[1] Khoá công khai của trang: e = 3, n {bits} bít. phuong muốn chữ ký cho", message.decode())
 
     s = forge(pub, h)
-    log.log("[2] Mallory dựng EM có phần rác ở cuối rồi lấy căn bậc ba nguyên",
+    log.log("[2] phuong dựng EM có phần rác ở cuối rồi lấy căn bậc ba nguyên",
             r"s = \lceil (00\ 01\ FF\ 00 \| DigestInfo \| H \| 00 \ldots 00)^{1/3} \rceil",
             f"s = 0x{format(s, 'x')[:40]}… ({s.bit_length()} bít, rất nhỏ so với n)")
     em = i2osp(rsavp1(pub, s), byte_len(pub.n))

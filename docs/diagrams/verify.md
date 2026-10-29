@@ -1,4 +1,4 @@
-# Kiểm tra chữ ký (Bob, `core/signature.py`)
+# Kiểm tra chữ ký (thuy, `core/signature.py`)
 
 ```mermaid
 flowchart LR

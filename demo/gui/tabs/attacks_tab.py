@@ -1,4 +1,3 @@
-"""Tab 4 — Tấn công & Kịch bản: danh sách scenarios/ và attacks/, bật/tắt phòng chống, xem từng bước."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -105,7 +104,7 @@ class AttacksTab(QWidget):
         kind, result, log = out
         if kind == "attack":
             self.badge.set_result(not result.success, result.summary,
-                                  ok_text="✅ TẤN CÔNG THẤT BẠI", bad_text="❌ TẤN CÔNG THÀNH CÔNG")
+                                  ok_text="TẤN CÔNG THẤT BẠI", bad_text="TẤN CÔNG THÀNH CÔNG")
         else:
             self.badge.set_result(result.valid, result.summary)
         self.steps.set_steps(log.steps)
@@ -130,7 +129,7 @@ class AttacksTab(QWidget):
             good, log = out
             n = len(attacks.REGISTRY)
             self.badge.set_result(good == n, f"{good}/{n} tấn công đúng kỳ vọng (thành công khi yếu, thất bại khi phòng chống)",
-                                  ok_text="✅ ĐÚNG KỲ VỌNG", bad_text="❌ CÓ TẤN CÔNG SAI KỲ VỌNG")
+                                  ok_text="ĐÚNG KỲ VỌNG", bad_text="CÓ TẤN CÔNG SAI KỲ VỌNG")
             self.steps.set_steps(log.steps)
 
         self.app.run(job, done, status="Đang chạy toàn bộ tấn công…", owner=self)

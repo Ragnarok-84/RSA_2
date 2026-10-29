@@ -1,11 +1,3 @@
-"""EMSA-PSS (RFC 8017 §9.1) với SHA-256 và MGF1-SHA256.
-
-Mã hoá (§9.1.1):
-    M'  = 0x00×8 || mHash || salt,     H = SHA256(M')
-    DB  = PS(0x00…) || 0x01 || salt
-    maskedDB = DB ⊕ MGF1(H, emLen − hLen − 1), xoá 8·emLen − emBits bít cao nhất
-    EM  = maskedDB || H || 0xBC
-"""
 from __future__ import annotations
 
 import secrets

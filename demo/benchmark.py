@@ -1,11 +1,3 @@
-"""Đo hiệu năng: sinh khoá, ký (có / không CRT), kiểm tra theo kích thước khoá; băm SHA-256 theo kích thước dữ liệu.
-
-Mỗi phép đo lặp `repeats` lần và lấy trung vị (dữ liệu >= 1 MB chỉ băm 1 lần vì SHA-256 tự cài bằng Python chậm).
-
-    python -m demo.benchmark                  # đầy đủ: khoá 512–3072 bít, dữ liệu 1 KB – 10 MB
-    python -m demo.benchmark --quick          # nhanh: khoá 512–2048 bít, dữ liệu tới 1 MB
-Kết quả ghi docs/report/benchmark.csv.
-"""
 from __future__ import annotations
 
 import argparse

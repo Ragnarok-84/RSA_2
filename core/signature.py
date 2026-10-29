@@ -1,11 +1,3 @@
-"""API chữ ký số cấp cao: băm SHA-256 → mã hoá EM (PKCS#1 v1.5 / PSS) → RSASP1.
-
-Luồng ký (Alice):
-    h = SHA256(M),  EM = Encode(h, k),  m = OS2IP(EM),  s = RSASP1(d, m),  S = I2OSP(s, k)
-Luồng kiểm tra (Bob):
-    s = OS2IP(S),  m' = s^e mod n,  EM' = I2OSP(m', k)
-    chấp nhận khi và chỉ khi EM' = Encode(SHA256(M), k)   (PSS: EMSA-PSS-VERIFY)
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

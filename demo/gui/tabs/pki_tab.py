@@ -1,5 +1,3 @@
-"""Tab 3 — PKI: chuỗi Root CA → Intermediate CA → Alice / Bob; cấp, thu hồi, xem chứng chỉ;
-kiểm tra chữ ký kèm chứng chỉ + dấu thời gian."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -39,13 +37,13 @@ class PKITab(QWidget):
         grid = QGridLayout(ctl)
         actions = [
             ("1. Tạo Root CA + Intermediate CA + TSA", self.create_cas),
-            ("2. Cấp chứng chỉ cho Alice", lambda: self.issue("Alice")),
-            ("2'. Cấp chứng chỉ cho Bob", lambda: self.issue("Bob")),
-            ("3. Alice ký hợp đồng + dấu thời gian", self.alice_signs),
+            ("2. Cấp chứng chỉ cho Trang (Sender)", lambda: self.issue("trang")),
+            ("2'. Cấp chứng chỉ cho Thủy (Receiver)", lambda: self.issue("thuy")),
+            ("3. Trang (Sender) ký hợp đồng + dấu thời gian", self.trang_signs),
             ("4. Kiểm tra chữ ký + chứng chỉ + timestamp", self.verify_signed),
             ("Thu hồi chứng chỉ đang chọn", self.revoke_selected),
             ("Kiểm tra chuỗi chứng chỉ đang chọn", self.verify_selected),
-            ("Mallory sửa hợp đồng rồi kiểm tra lại", self.tamper_contract),
+            ("Phương (Attacker) sửa hợp đồng rồi kiểm tra lại", self.tamper_contract),
         ]
         for i, (text, slot) in enumerate(actions):
             grid.addWidget(button(text, slot), i // 4, i % 4)
@@ -68,8 +66,6 @@ class PKITab(QWidget):
         split.addWidget(box2)
         split.setSizes([520, 560])
         lay.addWidget(split, 1)
-
-    # ---- tiện ích ----
     def _need_cas(self) -> bool:
         if self.root is None:
             common.show_info(self, "Chưa có CA", "Bấm '1. Tạo Root CA + Intermediate CA + TSA' trước.")
@@ -107,8 +103,6 @@ class PKITab(QWidget):
     def _selected(self) -> Certificate | None:
         items = self.tree.selectedItems()
         return items[0].data(0, Qt.ItemDataRole.UserRole) if items else None
-
-    # ---- thao tác ----
     def create_cas(self) -> None:
         bits = int(self.bits.currentText())
 
@@ -163,7 +157,7 @@ class PKITab(QWidget):
         ok, reason = self._status(cert)
         self.out.append(f"\n=== Chứng chỉ của {cert.subject} ===\n")
         self.out.append(cert.describe() + "\n")
-        self.out.append(("✅ " if ok else "❌ ") + reason + "\n")
+        self.out.append(("[HỢP LỆ] " if ok else "[KHÔNG HỢP LỆ] ") + reason + "\n")
 
     def verify_selected(self) -> None:
         cert = self._selected()
@@ -188,13 +182,13 @@ class PKITab(QWidget):
                         "bad")
         self.badge.set_info(f"Đã thu hồi chứng chỉ của {cert.subject}")
 
-    def alice_signs(self) -> None:
+    def trang_signs(self) -> None:
         if not self._need_cas():
             return
-        if "Alice" not in self.people:
-            common.show_info(self, "Chưa có chứng chỉ", "Bấm '2. Cấp chứng chỉ cho Alice' trước.")
+        if "trang" not in self.people:
+            common.show_info(self, "Chưa có chứng chỉ", "Bấm '2. Cấp chứng chỉ cho Trang (Sender)' trước.")
             return
-        (_, priv), cert = self.people["Alice"]
+        (_, priv), cert = self.people["trang"]
         tsa, contract = self.tsa, self.contract
 
         def job():
@@ -204,30 +198,30 @@ class PKITab(QWidget):
 
         def done(bundle) -> None:
             self.bundle = bundle
-            self.out.append("\n=== Alice ký contract.txt, TSA đóng dấu thời gian ===\n")
+            self.out.append("\n=== trang ký contract.txt, TSA đóng dấu thời gian ===\n")
             self.out.append(f"S     = {bundle.signature_hex[:64]}…\n"
                             f"token = Sign_TSA(SHA256(S) || t), t = {fmt_time(bundle.timestamp_token['time'])}\n")
-            self.badge.set_info("Alice đã ký — bấm '4. Kiểm tra'")
+            self.badge.set_info("trang đã ký — bấm '4. Kiểm tra'")
 
-        self.app.run(job, done, status="Alice đang ký…", owner=self)
+        self.app.run(job, done, status="Trang đang ký…", owner=self)
 
     def _arbitrate(self, message: bytes) -> None:
         if self.bundle is None:
-            common.show_info(self, "Chưa có chữ ký", "Bấm '3. Alice ký hợp đồng + dấu thời gian' trước.")
+            common.show_info(self, "Chưa có chữ ký", "Bấm '3. Trang (Sender) ký hợp đồng + dấu thời gian' trước.")
             return
         res = arbitrate(message, self.bundle, [self.root.certificate], self._crls(), self.tsa.public_key,
                         intermediates=[self.inter.certificate])
         self.badge.set_result(res.valid, res.reason)
-        self.out.append(("✅ " if res.valid else "❌ ") + res.reason + "\n", "ok" if res.valid else "bad")
+        self.out.append(("[HỢP LỆ] " if res.valid else "[KHÔNG HỢP LỆ] ") + res.reason + "\n", "ok" if res.valid else "bad")
 
     def verify_signed(self) -> None:
         if self._need_cas():
-            self.out.append("\n--- Trọng tài kiểm tra: chữ ký, dấu thời gian, chuỗi chứng chỉ tại thời điểm ký ---\n")
+            self.out.append("\n--- Linh (Third Party) kiểm tra: chữ ký, dấu thời gian, chuỗi chứng chỉ tại thời điểm ký ---\n")
             self._arbitrate(self.contract)
 
     def tamper_contract(self) -> None:
         if self._need_cas():
-            self.out.append("\n--- Mallory sửa 1 byte hợp đồng rồi trình chữ ký cũ ---\n")
+            self.out.append("\n--- Phương (Attacker) sửa 1 byte hợp đồng rồi trình chữ ký cũ ---\n")
             bad = bytearray(self.contract)
             bad[len(bad) // 2] ^= 0x01
             self._arbitrate(bytes(bad))

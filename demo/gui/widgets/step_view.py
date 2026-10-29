@@ -1,7 +1,3 @@
-"""Hiển thị danh sách Step: tiêu đề (tô màu theo mức), công thức render bằng FormulaLabel, giá trị monospace.
-
-Hỗ trợ trình chiếu từng bước: set_steps(steps, reveal_all=False) rồi gọi next_step().
-"""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -90,7 +86,6 @@ class StepView(QScrollArea):
             pass
 
     def card_texts(self) -> list[str]:
-        """Toàn bộ chữ trong các thẻ (dùng cho test)."""
         out = []
         for i in range(self._lay.count() - 1):
             w = self._lay.itemAt(i).widget()

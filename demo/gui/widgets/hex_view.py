@@ -1,4 +1,3 @@
-"""Ô hex chỉ đọc, font monospace, nút Copy."""
 from __future__ import annotations
 
 from PySide6.QtGui import QGuiApplication, QTextOption

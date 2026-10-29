@@ -1,11 +1,3 @@
-"""Ghi lại từng bước tính toán để CLI in ra và GUI hiển thị.
-
-Các hàm "verbose" trong core/, pki/, attacks/, scenarios/ nhận `logger: StepLogger | None`.
-Không hàm nào trong các thư mục đó gọi print: mọi thứ cần hiển thị đều đi qua StepLogger,
-còn demo/ quyết định hiển thị thế nào (in ra terminal, hay render công thức bằng matplotlib trên GUI).
-
-`formula_latex` chỉ dùng cú pháp matplotlib mathtext hỗ trợ: \\varphi, \\mathrm{mod}, ^{}, _{}, \\equiv, \\gcd, \\cdot.
-"""
 from __future__ import annotations
 
 import re

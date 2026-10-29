@@ -1,8 +1,3 @@
-"""Chạy toàn bộ tấn công a1 → a9 ở cấu hình yếu và khi bật phòng chống, in bảng tổng kết.
-
-    python -m demo.run_all_attacks            # chỉ bảng tổng kết
-    python -m demo.run_all_attacks -v         # in từng bước
-"""
 from __future__ import annotations
 
 import argparse

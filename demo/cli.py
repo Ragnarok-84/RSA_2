@@ -1,15 +1,3 @@
-"""Giao diện dòng lệnh (phương án dự phòng, chạy mọi máy không cần Qt).
-
-    python -m demo.cli                         # menu số
-    python -m demo.cli tiny --h 88
-    python -m demo.cli keygen --bits 2048 --out sample/keys/alice_sign.json --owner Alice
-    python -m demo.cli sign --key sample/keys/alice_sign.json --in sample/messages/contract.txt
-    python -m demo.cli verify --in sample/messages/contract.txt --sig sample/signatures/contract.txt.sig.json
-    python -m demo.cli attack a4_small_e_attack [--defended]      |  attack all
-    python -m demo.cli scenario s3_non_repudiation_contract        |  scenario all
-    python -m demo.cli report --out docs/report/test_results.md
-    python -m demo.cli gen-samples                 # sinh lại sample/ (khoá demo, chứng chỉ, chữ ký mẫu, logo.png)
-"""
 from __future__ import annotations
 
 import argparse
@@ -42,9 +30,6 @@ def print_steps(log: StepLogger) -> None:
         print(_color(lines[0], step.level))
         for line in lines[1:]:
             print(line)
-
-
-# ---- Lệnh ----------------------------------------------------------------------------------------------
 def cmd_tiny(p: int = 17, q: int = 11, e: int = 7, h: int | None = 88, message: str | None = None) -> None:
     tiny = TinyRSA(p, q, e)
     data: bytes | int = message.encode("utf-8") if message is not None else (88 if h is None else h)
@@ -61,7 +46,7 @@ def cmd_keygen(bits: int, out: Path, e: int = 65537, owner: str = "") -> None:
     pub_path = out.with_name(out.stem + ".pub.json")
     key_io.save_public_key(pub, pub_path)
     print(f"Sinh khoá {bits} bít trong {t.elapsed:.2f}s\n  khoá riêng  : {out}\n  khoá công khai: {pub_path}")
-    print(_color(f"  ⚠ {key_io.DEMO_WARNING}", "dim"))
+    print(_color(f"{key_io.DEMO_WARNING}", "dim"))
 
 
 def cmd_sign(key: Path, infile: Path, out: Path | None, scheme: str, cert: Path | None, tsa_key: Path | None) -> Path:
@@ -111,7 +96,7 @@ def cmd_verify(infile: Path, sig: Path, key: Path | None, root: Path | None) -> 
     res = verify_file(infile, bundle, pub)
     ok = res.valid and chain_ok
     print(f"SHA-256(tệp): {res.computed_hash.hex() if res.computed_hash else '-'}")
-    print(_color(f"{'✅ HỢP LỆ' if ok else '❌ KHÔNG HỢP LỆ'}: {res.reason}", "ok" if ok else "bad"))
+    print(_color(f"{'HỢP LỆ' if ok else 'KHÔNG HỢP LỆ'}: {res.reason}", "ok" if ok else "bad"))
     return ok
 
 
@@ -121,14 +106,14 @@ def cmd_pki_demo(bits: int = 1024) -> None:
     root = CertificateAuthority.create("Root CA ATBMTT", bits)
     root.self_signed_root()
     inter = root.create_intermediate("Intermediate CA ATBMTT", bits)
-    alice = inter.issue("Alice", generate_keypair(bits)[0])
-    for c in (root.certificate, inter.certificate, alice):
+    trang = inter.issue("Trang", generate_keypair(bits)[0])
+    for c in (root.certificate, inter.certificate, trang):
         print(_color(f"--- Chứng chỉ của {c.subject} ---", "head"))
         print(c.describe())
-    res = verify_chain(alice, [inter.certificate], [root.certificate], inter.publish_crl())
+    res = verify_chain(trang, [inter.certificate], [root.certificate], inter.publish_crl())
     print(_color(f"Kiểm tra chuỗi: {res.reason}", "ok" if res.valid else "bad"))
-    inter.revoke(alice.serial)
-    res = verify_chain(alice, [inter.certificate], [root.certificate], inter.publish_crl())
+    inter.revoke(trang.serial)
+    res = verify_chain(trang, [inter.certificate], [root.certificate], inter.publish_crl())
     print(_color(f"Sau khi thu hồi: {res.reason}", "ok" if res.valid else "bad"))
 
 
@@ -140,14 +125,10 @@ def _run_registry(package: str, name: str, **kw) -> None:
         mod.load(n).run(log, **kw)
         print_steps(log)
         print()
-
-
-# ---- Sinh dữ liệu mẫu ----------------------------------------------------------------------------------
 HELLO = "Xin chào! Đây là tệp mẫu để thử ký và kiểm tra chữ ký RSA.\n"
 
 
 def make_logo_png(size: int = 320) -> bytes:
-    """Ảnh PNG tự vẽ (không bản quyền): nền chuyển màu hồng–vàng, vòng tròn và chữ 'RSA' dạng khối, kèm nhiễu nhẹ."""
     glyphs = {"R": ["1110", "1001", "1110", "1010", "1001"], "S": ["0111", "1000", "0110", "0001", "1110"],
               "A": ["0110", "1001", "1111", "1001", "1001"]}
     cell, x0, y0 = size // 22, size // 2 - 7 * (size // 22), size // 2 - 5 * (size // 44)
@@ -192,7 +173,7 @@ def gen_samples(bits: int = 2048, say=print) -> None:
     say(f"images/logo.png: {len(logo) // 1024} KB")
 
     pairs = {}
-    for name in ("alice_sign", "bob_sign", "bob_enc", "root_ca", "tsa"):
+    for name in ("trang_sign", "thuy_sign", "thuy_enc", "root_ca", "tsa"):
         pairs[name] = generate_keypair(bits)
         key_io.save_private_key(pairs[name][1], keys / f"{name}.json", owner=name)
         say(f"keys/{name}.json ({bits} bít)")
@@ -202,20 +183,17 @@ def gen_samples(bits: int = 2048, say=print) -> None:
 
     root = CertificateAuthority("Root CA ATBMTT", pairs["root_ca"])
     key_io.write_json(certs / "root_ca.cert.json", root.self_signed_root().to_dict())
-    alice_cert = root.issue("Alice", pairs["alice_sign"][0], days=730)
-    for fname, cert in (("alice.cert.json", alice_cert), ("bob.cert.json", root.issue("Bob", pairs["bob_sign"][0], 730)),
+    trang_cert = root.issue("Trang", pairs["trang_sign"][0], days=730)
+    for fname, cert in (("trang.cert.json", trang_cert), ("thuy.cert.json", root.issue("Thủy", pairs["thuy_sign"][0], 730)),
                         ("tsa.cert.json", root.issue("TSA ATBMTT", pairs["tsa"][0], 730))):
         key_io.write_json(certs / fname, cert.to_dict())
-    say("certs/: root_ca, alice, bob, tsa (.cert.json)")
+    say("certs/: root_ca, trang, thuy, tsa (.cert.json)")
 
-    bundle = sign_file(msgs / "contract.txt", pairs["alice_sign"][1])
-    bundle.signer_certificate = alice_cert.to_dict()
+    bundle = sign_file(msgs / "contract.txt", pairs["trang_sign"][1])
+    bundle.signer_certificate = trang_cert.to_dict()
     bundle.timestamp_token = TimestampAuthority("TSA ATBMTT", pairs["tsa"]).stamp(bundle.signature).to_dict()
     key_io.save_signature(bundle, sigs / "contract.txt.sig.json")
-    say("signatures/contract.txt.sig.json (Alice ký, kèm chứng chỉ + dấu thời gian)")
-
-
-# ---- Menu tương tác ------------------------------------------------------------------------------------
+    say("signatures/contract.txt.sig.json (trang ký, kèm chứng chỉ + dấu thời gian)")
 MENU = """
 ==================== HỆ CHỮ KÝ ĐIỆN TỬ RSA ====================
 1. Tiny RSA — ký/kiểm tra từng bước (p=17, q=11, e=7)
@@ -262,7 +240,7 @@ def menu() -> None:
                 bits = int(_ask("Số bít (1024/2048/3072)", "2048"))
                 cmd_keygen(bits, Path(_ask("Lưu khoá riêng vào", str(SAMPLE / "keys" / "my_key.json"))))
             elif choice == "3":
-                cmd_sign(Path(_ask("Tệp khoá riêng", str(SAMPLE / "keys" / "alice_sign.json"))),
+                cmd_sign(Path(_ask("Tệp khoá riêng", str(SAMPLE / "keys" / "trang_sign.json"))),
                          Path(_ask("Tệp cần ký", str(SAMPLE / "messages" / "contract.txt"))), None,
                          _ask("Lược đồ (pkcs1v15/pss)", "pkcs1v15"), None, None)
             elif choice == "4":

@@ -1,7 +1,3 @@
-"""Số học cho RSA: Euclid, Euclid mở rộng, nghịch đảo modulo, bình phương và nhân, CRT, căn nguyên.
-
-Toàn bộ lõi gọi mod_pow ở đây thay vì pow(a, b, n) built-in.
-"""
 from __future__ import annotations
 
 from core.step_logger import StepLogger

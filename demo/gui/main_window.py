@@ -1,4 +1,3 @@
-"""Cửa sổ chính: ảnh nền kính mờ, tiêu đề, 6 tab, menu, thanh trạng thái (tiến độ + thời gian chạy)."""
 from __future__ import annotations
 
 import sys
@@ -22,7 +21,6 @@ BACKGROUND = RESOURCES / "background.png"
 
 
 class BackgroundWidget(QWidget):
-    """Vẽ ảnh nền phủ kín cửa sổ (giữ tỉ lệ, căn giữa). Không đặt ảnh qua QSS vì QSS lặp ảnh cho từng widget con."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -83,7 +81,7 @@ class MainWindow(QMainWindow):
         self.attacks_tab = AttacksTab(self)
         self.bench_tab = BenchmarkTab(self)
         self.test_tab = TestTab(self)
-        for tab, name in ((self.tiny_tab, "1. Tiny RSA"), (self.sign_tab, "2. Ký / Kiểm tra"),
+        for tab, name in ((self.tiny_tab, "1. Tiny RSA"), (self.sign_tab, "2. Ký & Kiểm tra"),
                           (self.pki_tab, "3. PKI"), (self.attacks_tab, "4. Tấn công & Kịch bản"),
                           (self.bench_tab, "5. Benchmark"), (self.test_tab, "6. Kiểm thử")):
             self.tabs.addTab(tab, amp(name))
@@ -119,14 +117,11 @@ class MainWindow(QMainWindow):
         members.triggered.connect(lambda: common.show_info(self, "Thành viên nhóm 11", "\n".join(MEMBERS)))
         h.addAction(about)
         h.addAction(members)
-
-    # ---- tác vụ nền ----
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
 
     def run(self, fn: Callable, on_done: Callable | None = None, status: str = "Đang xử lý...",
             owner: QWidget | None = None) -> bool:
-        """Chạy fn ở luồng nền; on_done(kết quả) chạy ở luồng giao diện. Nút của `owner` bị vô hiệu hoá khi chạy."""
         if self.busy:
             common.show_info(self, "Đang bận", "Đang chạy một tác vụ khác, vui lòng đợi.")
             return False

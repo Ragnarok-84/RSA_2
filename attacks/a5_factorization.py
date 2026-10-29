@@ -1,11 +1,3 @@
-"""A5 — Phân tích modulus nhỏ → lộ khoá riêng.
-
-Mục tiêu: tính lại d từ khoá công khai (n, e) rồi ký giả.
-Điều kiện: n nhỏ (≤ 64 bít). Pollard rho tìm thừa số trong khoảng O(n^(1/4)) bước:
-    x ← x² + c mod n,  y ← f(f(y)),  g = gcd(|x − y|, n)
-rồi p, q → φ(n) → d = e⁻¹ mod φ(n).
-Phòng chống: khoá >= 2048 bít (NIST SP 800-57), p, q sinh ngẫu nhiên bằng CSPRNG.
-"""
 from __future__ import annotations
 
 import secrets
@@ -21,7 +13,6 @@ NAME = "A5: n nhỏ → phân tích (Pollard rho) → lộ d"
 
 
 def pollard_rho(n: int, max_steps: int = 200_000) -> int | None:
-    """Tìm một thừa số không tầm thường của n (Floyd), hoặc None nếu quá max_steps."""
     if n % 2 == 0:
         return 2
     steps = 0
@@ -46,7 +37,7 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int | No
     bits = bits or (2048 if defended else 64)
     log.head(f"TẤN CÔNG A5: PHÂN TÍCH n {bits} BÍT")
     pub, _ = generate_keypair(bits)
-    log.note("[1] Khoá công khai của Alice", f"e = {pub.e}\nn = {pub.n if bits <= 128 else hex(pub.n)[:42] + '…'}")
+    log.note("[1] Khoá công khai của trang", f"e = {pub.e}\nn = {pub.n if bits <= 128 else hex(pub.n)[:42] + '…'}")
 
     with Timer() as t:
         p = pollard_rho(pub.n, max_steps)
@@ -61,11 +52,11 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int | No
         log.log(f"[2] Pollard rho tìm được thừa số sau {t.elapsed:.3f}s",
                 r"g = \gcd(|x - y|, n)", f"p = {p}\nq = {q}")
         log.log("[3] Tính lại khoá riêng", r"d = e^{-1} \mathrm{mod}\ (p-1)(q-1)", f"d = {d}")
-        fake = "Alice đồng ý chuyển 100 triệu cho Mallory".encode("utf-8")
+        fake = "trang đồng ý chuyển 100 triệu cho phuong".encode("utf-8")
         h = toy_hash(fake, pub.n)
         s = mod_pow(h, d, pub.n)
         success = mod_pow(s, pub.e, pub.n) == h
-        log.log("[4] Mallory ký giả bằng d vừa tính, Bob kiểm tra bằng (n, e) của Alice",
+        log.log("[4] phuong ký giả bằng d vừa tính, thuy kiểm tra bằng (n, e) của trang",
                 r"s = h^{d} \mathrm{mod}\ n,\; s^{e} \mathrm{mod}\ n = h",
                 f"M = {fake.decode()}\nh = {h}, s = {s} → " + ("HỢP LỆ" if success else "sai"),
                 level="bad" if success else "ok")

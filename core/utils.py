@@ -1,4 +1,3 @@
-"""Tiện ích dùng chung: chuyển đổi số nguyên <-> chuỗi byte (RFC 8017 §4), hex, đo thời gian, so sánh hằng thời gian."""
 from __future__ import annotations
 
 import json

@@ -1,10 +1,3 @@
-"""Tấn công aN_*: chỉ ra hệ chữ ký bị phá khi bỏ đi một thành phần.
-
-Mỗi module có `run(logger=None, defended=False, ...) -> AttackResult`:
-  - defended=False (cấu hình yếu)  → kỳ vọng success == True;
-  - defended=True  (bật phòng chống) → kỳ vọng success == False.
-Docstring mỗi module nêu: mục tiêu, điều kiện tấn công, cách phòng chống.
-"""
 from __future__ import annotations
 
 import importlib

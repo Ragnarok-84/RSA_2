@@ -1,8 +1,3 @@
-"""Danh sách chứng chỉ bị thu hồi (CRL), do CA ký.
-
-Một chứng chỉ bị coi là đã thu hồi tại thời điểm t khi t >= revoked_at. Nhờ vậy chữ ký có dấu thời gian
-TRƯỚC thời điểm thu hồi vẫn được công nhận (xem scenarios/s4_key_compromise.py).
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

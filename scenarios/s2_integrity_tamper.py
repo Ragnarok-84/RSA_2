@@ -1,10 +1,3 @@
-"""S2 — Toàn vẹn: sửa dù chỉ 1 byte (sample/messages/contract_tampered.txt) thì kiểm tra chữ ký FAIL.
-
-Hiệu ứng thác lũ của SHA-256: đổi 1 bít đầu vào làm khoảng một nửa số bít của giá trị băm thay đổi,
-nên EM' khôi phục từ chữ ký không còn khớp Encode(SHA256(M')).
-
-Tấn công tương ứng khi bỏ băm an toàn / đệm chuẩn / kiểm tra chặt: a1, a2, a3, a4.
-"""
 from __future__ import annotations
 
 from core.hash.sha256 import sha256
@@ -37,15 +30,15 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     pub, priv = generate_keypair(bits)
     sig = sign(original, priv)
     h1, h2 = sha256(original), sha256(tampered)
-    log.log("[2] Alice ký contract.txt", r"S = \mathrm{RSASP1}(d, \mathrm{Encode}(\mathrm{SHA256}(M)))",
+    log.log("[2] trang ký contract.txt", r"S = \mathrm{RSASP1}(d, \mathrm{Encode}(\mathrm{SHA256}(M)))",
             f"SHA256(M)  = {h1.hex()}\nS = {sig.hex()[:64]}…")
     log.log("    Giá trị băm của bản bị sửa", r"\mathrm{SHA256}(M')", f"SHA256(M') = {h2.hex()}\n"
             f"Khác {_bit_diff(h1, h2)}/256 bít so với SHA256(M) (hiệu ứng thác lũ)")
 
     r_ok = verify_detailed(original, sig, pub)
     r_tamper = verify_detailed(tampered, sig, pub)
-    log.log("[3] Bob kiểm tra bản gốc", None, r_ok.reason, level="ok" if r_ok.valid else "bad")
-    log.log("[4] Bob kiểm tra bản bị sửa 1 byte với cùng chữ ký", None, r_tamper.reason,
+    log.log("[3] thuy kiểm tra bản gốc", None, r_ok.reason, level="ok" if r_ok.valid else "bad")
+    log.log("[4] thuy kiểm tra bản bị sửa 1 byte với cùng chữ ký", None, r_tamper.reason,
             level="bad" if r_tamper.valid else "ok")
 
     flipped_msg = bytearray(original)

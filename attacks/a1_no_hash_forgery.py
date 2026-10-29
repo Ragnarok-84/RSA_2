@@ -1,10 +1,3 @@
-"""A1 — Ký không băm: giả mạo nhờ tính chất nhân của RSA.
-
-Mục tiêu: tạo chữ ký hợp lệ cho thông điệp Alice chưa từng ký.
-Điều kiện: Alice ký trực tiếp số m (s = m^d mod n, không băm, không đệm); Mallory có hai chữ ký s1, s2.
-    s1 · s2 = m1^d · m2^d = (m1 · m2)^d  (mod n)   ⇒  s1·s2 mod n là chữ ký hợp lệ của m1·m2 mod n
-Phòng chống: ký trên SHA-256(M) có đệm PKCS#1/PSS — tích hai khối đệm không còn là khối đệm hợp lệ.
-"""
 from __future__ import annotations
 
 from core.rsa_keygen import generate_keypair
@@ -23,14 +16,14 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
     pub, priv = generate_keypair(bits)
     m1, m2 = 2, 50_000_000
     target = m1 * m2
-    log.note("[1] Alice chịu ký hai lệnh vô hại", f"M1 = 'trả {m1} đồng', M2 = 'trả {m2:,} đồng'")
+    log.note("[1] trang chịu ký hai lệnh vô hại", f"M1 = 'trả {m1} đồng', M2 = 'trả {m2:,} đồng'")
 
     if not defended:
         s1, s2 = sign_raw_no_hash(m1, priv), sign_raw_no_hash(m2, priv)
-        log.log("    Alice ký trực tiếp số (không băm, không đệm)", r"s_i = m_i^{d} \mathrm{mod}\ n",
+        log.log("    trang ký trực tiếp số (không băm, không đệm)", r"s_i = m_i^{d} \mathrm{mod}\ n",
                 f"s1 = 0x{format(s1, 'x')[:32]}…\ns2 = 0x{format(s2, 'x')[:32]}…")
         s3 = (s1 * s2) % pub.n
-        log.log("[2] Mallory nhân hai chữ ký, không cần khoá riêng", r"s_3 = s_1 \cdot s_2 \mathrm{mod}\ n",
+        log.log("[2] phuong nhân hai chữ ký, không cần khoá riêng", r"s_3 = s_1 \cdot s_2 \mathrm{mod}\ n",
                 f"s3 = 0x{format(s3, 'x')[:32]}…")
         success = rsavp1(pub, s3) == target % pub.n
         log.log("[3] Kiểm tra s3 cho M3 = M1·M2", r"s_3^{e} \mathrm{mod}\ n \equiv m_1 m_2",
@@ -39,11 +32,11 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
     else:
         msg1, msg2 = f"trả {m1} đồng".encode(), f"trả {m2} đồng".encode()
         s1, s2 = sign(msg1, priv), sign(msg2, priv)
-        log.note("    Alice ký trên SHA-256(M) có đệm PKCS#1 v1.5")
+        log.note("    trang ký trên SHA-256(M) có đệm PKCS#1 v1.5")
         s3 = i2osp((os2ip(s1) * os2ip(s2)) % pub.n, byte_len(pub.n))
         res = verify_detailed(f"trả {target} đồng".encode(), s3, pub)
         success = res.valid
-        log.log("[2] Mallory vẫn nhân hai chữ ký và gắn vào M3", None, res.reason, level="bad" if success else "ok")
+        log.log("[2] phuong vẫn nhân hai chữ ký và gắn vào M3", None, res.reason, level="bad" if success else "ok")
 
     summary = ("Giả mạo thành công: chữ ký RSA thuần có tính nhân." if success else
                "Thất bại: băm + đệm phá vỡ tính nhân.")

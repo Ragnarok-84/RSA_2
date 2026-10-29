@@ -1,11 +1,3 @@
-"""Kiểm tra chuỗi chứng chỉ: leaf → (các CA trung gian) → root tin cậy.
-
-Với mỗi mắt xích tại thời điểm `at_time`:
-  1. chứng chỉ còn trong thời hạn;
-  2. tìm được chứng chỉ của bên cấp, bên cấp có cờ is_ca và chữ ký của bên cấp trên TBS hợp lệ;
-  3. chứng chỉ chưa bị bên cấp thu hồi tại `at_time` (CRL phải có chữ ký hợp lệ của bên cấp);
-  4. kết thúc ở một root nằm trong danh sách tin cậy (root tự ký, chữ ký tự ký đúng).
-"""
 from __future__ import annotations
 
 from typing import Iterable

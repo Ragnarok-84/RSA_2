@@ -1,12 +1,3 @@
-"""RSA thu nhỏ để tính tay và trình bày từng bước (mặc định ví dụ slide: p = 17, q = 11, e = 7).
-
-    n = 187, φ(n) = 160, d = 23
-    Ký h = 88:        s = 88^23 mod 187 = 11
-    Kiểm tra:         s^e mod n = 11^7 mod 187 = 88 = h  ⇒ hợp lệ
-
-Đầu vào kiểu int được coi trực tiếp là h; kiểu bytes thì h = toy_hash(M, n) = OS2IP(SHA256(M)) mod n.
-Bản thu nhỏ ký không đệm, chỉ để minh hoạ — không an toàn.
-"""
 from __future__ import annotations
 
 from core.hash.toy_hash import toy_hash
@@ -57,7 +48,7 @@ class TinyRSA:
         if logger is not None and with_keygen:
             self.keygen_steps(logger)
         if logger is not None:
-            logger.head("KÝ (Alice dùng khoá riêng d)")
+            logger.head("KÝ (trang dùng khoá riêng d)")
         h = self.hash_value(message, logger)
         s = mod_pow(h, self.d, self.n, logger)
         if logger is not None:
@@ -68,7 +59,7 @@ class TinyRSA:
     def verify(self, message: bytes | int, s: int, logger: StepLogger | None = None) -> bool:
         """Kiểm tra: s^e mod n == h ?"""
         if logger is not None:
-            logger.head("KIỂM TRA (Bob dùng khoá công khai (n, e))")
+            logger.head("KIỂM TRA (thuy dùng khoá công khai (n, e))")
         h = self.hash_value(message, logger)
         if not 0 <= s < self.n:
             if logger is not None:

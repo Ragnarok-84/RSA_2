@@ -1,13 +1,3 @@
-"""S4 — Lộ khoá: khoá của Alice bị lộ ở thời điểm t_r → CA thu hồi → dấu thời gian phân định.
-
-  - chữ ký có dấu thời gian < t_r vẫn hợp lệ (đã tồn tại trước khi khoá bị thu hồi);
-  - chữ ký có dấu thời gian >= t_r bị từ chối;
-  - sửa thời điểm trong dấu thời gian → chữ ký của TSA sai;
-  - không có dấu thời gian → chỉ xét được tại hiện tại → bị từ chối.
-Giới hạn còn lại: khoảng từ lúc khoá thực sự bị lộ đến lúc báo thu hồi.
-
-Tấn công tương ứng (lấy được khoá riêng): attacks/a5_factorization.py, attacks/a6_crt_fault_attack.py.
-"""
 from __future__ import annotations
 
 from core.rsa_keygen import generate_keypair
@@ -30,32 +20,32 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     root = CertificateAuthority.create("Root CA ATBMTT", bits)
     root.self_signed_root(not_before=t0 - 400 * DAY)
     tsa = TimestampAuthority.create("TSA ATBMTT", bits)
-    alice_pub, alice_priv = generate_keypair(bits)
-    alice_cert = root.issue("Alice", alice_pub, days=365, not_before=t0 - 100 * DAY)
+    trang_pub, trang_priv = generate_keypair(bits)
+    trang_cert = root.issue("Trang", trang_pub, days=365, not_before=t0 - 100 * DAY)
     t_sign, t_leak, t_window, t_r = t0 - 30 * DAY, t0 - 20 * DAY, t0 - 15 * DAY, t0 - 10 * DAY
 
     def bundle(msg_sig: bytes, at: int | None) -> SignatureBundle:
         token = tsa.stamp(msg_sig, at).to_dict() if at is not None else None
-        return SignatureBundle("pkcs1v15", "", "", msg_sig.hex(), alice_cert.to_dict(), token)
+        return SignatureBundle("pkcs1v15", "", "", msg_sig.hex(), trang_cert.to_dict(), token)
 
     contract = "Hợp đồng thuê nhà 12 tháng, tiền thuê 8.000.000 VNĐ/tháng.".encode("utf-8")
-    b1 = bundle(sign(contract, alice_priv), t_sign)
-    log.note(f"[1] {fmt_time(t_sign)}: Alice ký hợp đồng thuê nhà, TSA đóng dấu thời gian")
-    log.note(f"[2] {fmt_time(t_leak)}: Mallory lấy cắp được khoá riêng của Alice (Alice chưa biết)")
-    window_doc = "Alice bán xe ô tô cho Mallory giá 10.000.000 VNĐ.".encode("utf-8")
-    b_window = bundle(sign(window_doc, alice_priv), t_window)
-    log.note(f"[3] {fmt_time(t_window)}: Mallory ký văn bản giả, xin dấu thời gian THẬT")
-    root.revoke(alice_cert.serial, at=t_r)
+    b1 = bundle(sign(contract, trang_priv), t_sign)
+    log.note(f"[1] {fmt_time(t_sign)}: trang ký hợp đồng thuê nhà, TSA đóng dấu thời gian")
+    log.note(f"[2] {fmt_time(t_leak)}: phuong lấy cắp được khoá riêng của trang (trang chưa biết)")
+    window_doc = "trang bán xe ô tô cho phuong giá 10.000.000 VNĐ.".encode("utf-8")
+    b_window = bundle(sign(window_doc, trang_priv), t_window)
+    log.note(f"[3] {fmt_time(t_window)}: phuong ký văn bản giả, xin dấu thời gian THẬT")
+    root.revoke(trang_cert.serial, at=t_r)
     crl = root.publish_crl()
-    log.note(f"[4] {fmt_time(t_r)} (= t_r): Alice báo mất khoá, CA thu hồi và công bố CRL có chữ ký",
-             f"CRL: serial {alice_cert.serial} thu hồi từ {fmt_time(t_r)}")
+    log.note(f"[4] {fmt_time(t_r)} (= t_r): trang báo mất khoá, CA thu hồi và công bố CRL có chữ ký",
+             f"CRL: serial {trang_cert.serial} thu hồi từ {fmt_time(t_r)}")
 
-    fake = "Alice bán căn nhà cho Mallory với giá 1 đồng.".encode("utf-8")
-    fake_sig = sign(fake, alice_priv)
+    fake = "trang bán căn nhà cho phuong với giá 1 đồng.".encode("utf-8")
+    fake_sig = sign(fake, trang_priv)
     b_after = bundle(fake_sig, t0)
     b_back = SignatureBundle(**{**b_after.__dict__, "timestamp_token": {**b_after.timestamp_token, "time": t_sign}})
     b_none = bundle(fake_sig, None)
-    log.note(f"[5] {fmt_time(t0)}: Mallory dùng khoá lấy cắp ký văn bản giả, thử nhiều cách trình ra toà")
+    log.note(f"[5] {fmt_time(t0)}: phuong dùng khoá lấy cắp ký văn bản giả, thử nhiều cách trình ra toà")
 
     roots = [root.certificate]
     r1 = arbitrate(contract, b1, roots, crl, tsa.public_key, t0)
@@ -69,7 +59,7 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     log.log("    Văn bản giả, không có timestamp", None, r4.reason, level="bad" if r4.valid else "ok")
 
     r_window = arbitrate(window_doc, b_window, roots, crl, tsa.public_key, t0)
-    log.log("[7] Giới hạn: văn bản Mallory ký TRONG khoảng lộ khoá (t_leak <= t < t_r)", None,
+    log.log("[7] Giới hạn: văn bản phuong ký TRONG khoảng lộ khoá (t_leak <= t < t_r)", None,
             ("vẫn được công nhận — " if r_window.valid else "bị từ chối — ") + r_window.reason +
             "\nToán học, CA và TSA không phân biệt được chữ ký này với chữ ký thật; chỉ giảm rủi ro bằng "
             "token/HSM có PIN, báo mất ngay, OCSP thay cho CRL định kỳ.", level="dim")

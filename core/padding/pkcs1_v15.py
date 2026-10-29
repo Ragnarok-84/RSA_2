@@ -1,8 +1,3 @@
-"""EMSA-PKCS1-v1_5 (RFC 8017 §9.2) cho SHA-256.
-
-    T  = DigestInfo || H(M)
-    EM = 0x00 || 0x01 || PS || 0x00 || T,   PS = 0xFF…0xFF, |PS| = emLen − |T| − 3 >= 8
-"""
 from __future__ import annotations
 
 from core.utils import constant_time_eq

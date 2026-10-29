@@ -1,15 +1,3 @@
-"""S6 — Ký rồi mã hoá (phong bì số, mô hình slide 22 Ch.4).
-
-    s  = Sign_{d_A}( H(to || t || M) )
-    C2 = AES-GCM_K( M || s )          K: khoá phiên ngẫu nhiên 256 bít
-    C1 = RSA-Enc_{e_B}(K)             RSA-OAEP (RFC 8017 §7.1) trên khoá MÃ HOÁ của Bob
-
-⚠ NGOÀI LÕI: kịch bản này là nơi DUY NHẤT ngoài test/ dùng thư viện `cryptography`, và chỉ dùng cho AES-GCM.
-RSA, OAEP, MGF1, SHA-256 và chữ ký vẫn là phần tự cài trong core/.
-
-Cặp khoá ký và cặp khoá mã hoá của mỗi người tách riêng (Alice ký bằng alice_sign, Bob giải mã bằng bob_enc).
-Ký kèm danh tính người nhận `to` và thời điểm `t` để chặn chuyển tiếp lén (attacks/a9_surreptitious_forwarding.py).
-"""
 from __future__ import annotations
 
 import json
@@ -30,16 +18,12 @@ HASH_LEN = 32
 
 
 class EnvelopeError(Exception):
-    """Mở phong bì thất bại; thông điệp lỗi là lý do để hiển thị."""
-
-
-# ---- RSA-OAEP (RFC 8017 §7.1) trên các hàm lõi ---------------------------------------------------------
+    pass
 def _xor(a: bytes, b: bytes) -> bytes:
     return bytes(x ^ y for x, y in zip(a, b))
 
 
 def oaep_encrypt(message: bytes, pub: RSAPublicKey, label: bytes = b"") -> bytes:
-    """EME-OAEP: EM = 00 || maskedSeed || maskedDB, DB = lHash || PS || 01 || M;  C = EM^e mod n."""
     k = byte_len(pub.n)
     if len(message) > k - 2 * HASH_LEN - 2:
         raise ValueError("Thông điệp quá dài cho RSA-OAEP với khoá này")
@@ -51,7 +35,6 @@ def oaep_encrypt(message: bytes, pub: RSAPublicKey, label: bytes = b"") -> bytes
 
 
 def oaep_decrypt(ciphertext: bytes, priv: RSAPrivateKey, label: bytes = b"") -> bytes:
-    """Giải mã RSA-OAEP. Mọi lỗi trả cùng một thông báo (không lộ "sai ở bước nào")."""
     k = byte_len(priv.n)
     if len(ciphertext) != k or os2ip(ciphertext) >= priv.n:
         raise EnvelopeError("giải mã khoá phiên thất bại")
@@ -64,9 +47,6 @@ def oaep_decrypt(ciphertext: bytes, priv: RSAPrivateKey, label: bytes = b"") -> 
     if em[0] != 0 or not constant_time_eq(db[:HASH_LEN], sha256(label)) or sep < 0 or any(rest[:sep]):
         raise EnvelopeError("giải mã khoá phiên thất bại")
     return rest[sep + 1:]
-
-
-# ---- Phong bì số ---------------------------------------------------------------------------------------
 def _aesgcm():
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -76,13 +56,11 @@ def _aesgcm():
 
 
 def signed_part(sender: str, to: str, t: int, message: bytes) -> bytes:
-    """Phần được ký: to || t || M (kèm tên người gửi), serialize chuẩn tắc."""
     return canonical_json({"from": sender, "to": to, "t": t}) + message
 
 
 def seal(message: bytes, sender: str, sender_sign_priv: RSAPrivateKey, to: str, to_enc_pub: RSAPublicKey,
          t: int | None = None) -> dict:
-    """Alice: ký rồi mã hoá gửi `to`. Trả phong bì {C1, nonce, C2} dạng hex."""
     t = now() if t is None else t
     s = sign(signed_part(sender, to, t, message), sender_sign_priv)
     inner = canonical_json({"from": sender, "to": to, "t": t, "m": message.hex(), "s": s.hex()})
@@ -105,7 +83,6 @@ def decrypt_inner(envelope: dict, my_enc_priv: RSAPrivateKey) -> bytes:
 
 def open_envelope(envelope: dict, me: str, my_enc_priv: RSAPrivateKey,
                   sign_keys: dict[str, RSAPublicKey]) -> dict:
-    """Người nhận `me`: giải mã, kiểm tra chữ ký và kiểm tra thư đúng là gửi cho mình."""
     inner = json.loads(decrypt_inner(envelope, my_enc_priv))
     sender, message = inner["from"], from_hex(inner["m"])
     pub = sign_keys.get(sender)
@@ -125,29 +102,29 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     log.head("KỊCH BẢN S6: KÝ RỒI MÃ HOÁ (PHONG BÌ SỐ)")
     _aesgcm()
 
-    alice_sign_pub, alice_sign_priv = generate_keypair(bits)
-    bob_enc_pub, bob_enc_priv = generate_keypair(bits)
-    carol_enc_pub, carol_enc_priv = generate_keypair(bits)
-    mallory_enc_pub, mallory_enc_priv = generate_keypair(bits)
-    sign_keys = {"Alice": alice_sign_pub}
-    log.note("[1] Mỗi người có cặp khoá KÝ và cặp khoá MÃ HOÁ riêng", "alice_sign, bob_enc, carol_enc, mallory_enc")
+    trang_sign_pub, trang_sign_priv = generate_keypair(bits)
+    thuy_enc_pub, thuy_enc_priv = generate_keypair(bits)
+    linh_enc_pub, linh_enc_priv = generate_keypair(bits)
+    phuong_enc_pub, phuong_enc_priv = generate_keypair(bits)
+    sign_keys = {"trang": trang_sign_pub}
+    log.note("[1] Trang (Sender), Thủy (Receiver), Phương (Attacker) và Linh (Third Party) có khoá riêng", "trang_sign, thuy_enc, linh_enc, phuong_enc")
 
-    message = "Bob thân mến, mật khẩu kho dữ liệu dự án là: X7#kq-2026. Alice.".encode("utf-8")
-    env = seal(message, "Alice", alice_sign_priv, "Bob", bob_enc_pub)
-    log.log("[2] Alice ký rồi mã hoá gửi Bob", r"s = \mathrm{Sign}_{d_A}(H(to \| t \| M)),\; C_2 = \mathrm{AES{-}GCM}_K(M \| s),\; C_1 = \mathrm{RSA{-}Enc}_{e_B}(K)",
+    message = "thuy thân mến, mật khẩu kho dữ liệu dự án là: X7#kq-2026. trang.".encode("utf-8")
+    env = seal(message, "trang", trang_sign_priv, "thuy", thuy_enc_pub)
+    log.log("[2] Trang (Sender) ký rồi mã hoá gửi Thủy (Receiver)", r"s = \mathrm{Sign}_{d_A}(H(to \| t \| M)),\; C_2 = \mathrm{AES{-}GCM}_K(M \| s),\; C_1 = \mathrm{RSA{-}Enc}_{e_B}(K)",
             f"C1 = {env['C1'][:48]}…\nC2 = {env['C2'][:48]}… ({len(env['C2']) // 2} byte)")
-    log.log("    Mallory nghe lén chỉ thấy C1, nonce, C2", None,
+    log.log("    Phương (Attacker) nghe lén chỉ thấy C1, nonce, C2", None,
             f"Bản rõ có xuất hiện trong gói tin? {message.hex() in json.dumps(env)}", level="ok")
 
     try:
-        opened = open_envelope(env, "Bob", bob_enc_priv, sign_keys)
-        bob_ok = opened["message"] == message
-        log.log("[3] Bob giải mã K bằng khoá riêng mã hoá, giải mã C2, kiểm tra chữ ký của Alice", None,
+        opened = open_envelope(env, "thuy", thuy_enc_priv, sign_keys)
+        thuy_ok = opened["message"] == message
+        log.log("[3] Thủy (Receiver) giải mã K, C2 và kiểm tra chữ ký của Trang", None,
                 f"Người gửi: {opened['from']}, gửi cho: {opened['to']}, lúc {fmt_time(opened['t'])}\n"
-                f"M = {opened['message'].decode()}", level="ok" if bob_ok else "bad")
+                f"M = {opened['message'].decode()}", level="ok" if thuy_ok else "bad")
     except EnvelopeError as err:
-        bob_ok = False
-        log.bad("[3] Bob không mở được phong bì", str(err))
+        thuy_ok = False
+        log.bad("[3] Thủy không mở được phong bì", str(err))
 
     def attempt(title: str, fn) -> bool:
         try:
@@ -158,23 +135,23 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
             log.ok(title, f"bị chặn: {err}")
             return False
 
-    mallory_ok = attempt("[4] Mallory mở phong bì bằng khoá riêng của Mallory",
-                         lambda: open_envelope(env, "Mallory", mallory_enc_priv, sign_keys))
+    phuong_ok = attempt("[4] Phương (Attacker) mở phong bì bằng khoá riêng của mình",
+                         lambda: open_envelope(env, "phuong", phuong_enc_priv, sign_keys))
     bad = dict(env)
     c2 = bytearray(from_hex(env["C2"]))
     c2[len(c2) // 2] ^= 0x01
     bad["C2"] = c2.hex()
-    tamper_ok = attempt("[5] Mallory lật 1 bít trong C2 rồi chuyển cho Bob",
-                        lambda: open_envelope(bad, "Bob", bob_enc_priv, sign_keys))
-    forwarded = encrypt_inner(decrypt_inner(env, bob_enc_priv), carol_enc_pub)
-    forward_ok = attempt("[6] Bob giải mã rồi mã hoá lại nguyên (M, s) gửi Carol (chuyển tiếp lén)",
-                         lambda: open_envelope(forwarded, "Carol", carol_enc_priv, sign_keys))
+    tamper_ok = attempt("[5] Phương (Attacker) lật 1 bít trong C2 rồi chuyển cho Thủy",
+                        lambda: open_envelope(bad, "thuy", thuy_enc_priv, sign_keys))
+    forwarded = encrypt_inner(decrypt_inner(env, thuy_enc_priv), linh_enc_pub)
+    forward_ok = attempt("[6] Thủy chuyển tiếp (M, s) cho Linh (Third Party)",
+                         lambda: open_envelope(forwarded, "linh", linh_enc_priv, sign_keys))
 
-    valid = bob_ok and not mallory_ok and not tamper_ok and not forward_ok
-    summary = ("Phong bì số cho cả bảo mật (chỉ Bob đọc được) lẫn chứng thực; ký kèm người nhận chặn chuyển tiếp lén."
+    valid = thuy_ok and not phuong_ok and not tamper_ok and not forward_ok
+    summary = ("Phong bì số cho cả bảo mật (chỉ Thủy đọc được) lẫn chứng thực; ký kèm người nhận chặn chuyển tiếp lén."
                if valid else "Kịch bản S6 không đạt.")
     (log.ok if valid else log.bad)("[KẾT LUẬN] " + summary)
     return ScenarioResult(NAME, valid, summary, {
-        "bob_opens": bob_ok, "mallory_opens": mallory_ok, "tampered_accepted": tamper_ok,
+        "thuy_opens": thuy_ok, "phuong_opens": phuong_ok, "tampered_accepted": tamper_ok,
         "forward_accepted": forward_ok,
     })

@@ -1,4 +1,3 @@
-"""Nhãn kết quả lớn: ✅ HỢP LỆ / ❌ KHÔNG HỢP LỆ + lý do."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt

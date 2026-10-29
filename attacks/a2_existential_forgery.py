@@ -1,10 +1,3 @@
-"""A2 — Giả mạo tồn tại (existential forgery).
-
-Mục tiêu: tạo một cặp (m, s) hợp lệ mà không cần thấy chữ ký nào của Alice.
-Điều kiện: bộ kiểm tra RSA thuần chỉ so s^e mod n == m. Mallory chọn s ngẫu nhiên rồi tính m = s^e mod n.
-m vô nghĩa, nhưng nếu hệ thống chỉ cần m là một mã giao dịch / số tiền thì đã đủ gây hại.
-Phòng chống: băm + đệm có cấu trúc — s ngẫu nhiên gần như không bao giờ cho EM đúng cấu trúc 00 01 FF… 00 DigestInfo.
-"""
 from __future__ import annotations
 
 import secrets
@@ -23,7 +16,7 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
     log = logger if logger is not None else StepLogger()
     log.head(f"TẤN CÔNG A2: GIẢ MẠO TỒN TẠI ({'CÓ' if defended else 'KHÔNG'} phòng chống)")
     pub, _ = generate_keypair(bits)
-    log.note("[1] Mallory chỉ có khoá công khai (n, e) của Alice, chưa thấy chữ ký nào")
+    log.note("[1] phuong chỉ có khoá công khai (n, e) của trang, chưa thấy chữ ký nào")
 
     if not defended:
         s = 2 + secrets.randbelow(pub.n - 2)
@@ -32,7 +25,7 @@ def run(logger: StepLogger | None = None, defended: bool = False, bits: int = 10
                 f"s = 0x{format(s, 'x')[:32]}…\nm = 0x{format(m, 'x')[:32]}…")
         success = rsavp1(pub, s) == m
         log.log("[3] Bộ kiểm tra RSA thuần: s^e mod n == m ?", None,
-                "HỢP LỆ: (m, s) là cặp thông điệp – chữ ký 'của Alice'" if success else "sai",
+                "HỢP LỆ: (m, s) là cặp thông điệp - chữ ký 'của trang'" if success else "sai",
                 level="bad" if success else "ok")
         hits = 1 if success else 0
     else:

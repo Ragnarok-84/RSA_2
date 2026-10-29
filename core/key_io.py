@@ -1,8 +1,3 @@
-"""Lưu / đọc khoá RSA và tệp chữ ký *.sig.json dạng JSON (số nguyên ghi dạng hex).
-
-⚠ Khoá riêng được ghi KHÔNG mã hoá — chỉ dùng cho demo, không dùng cho khoá thật.
-Đọc/ghi tệp ở chế độ nhị phân, mã UTF-8, để chạy giống nhau trên Windows và macOS.
-"""
 from __future__ import annotations
 
 import json
@@ -12,6 +7,7 @@ from core.rsa_keygen import RSAPrivateKey, RSAPublicKey
 from core.signature import SignatureBundle
 
 PRIVATE_FIELDS = ("n", "e", "d", "p", "q", "dP", "dQ", "qInv")
+# Khóa riêng lưu dạng rõ; chỉ dùng các tệp này cho demo.
 DEMO_WARNING = "KHOÁ DEMO cho bài tập — KHÔNG dùng thật, tệp không được mã hoá"
 
 

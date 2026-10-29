@@ -1,7 +1,3 @@
-"""Chạy tác vụ chậm (sinh khoá, băm tệp lớn, benchmark, tấn công e = 3) ngoài luồng giao diện.
-
-QThreadPool + QRunnable; kết quả / lỗi / tiến độ báo về luồng giao diện qua Signal.
-"""
 from __future__ import annotations
 
 import inspect
@@ -19,8 +15,6 @@ class WorkerSignals(QObject):
 
 
 class Worker(QRunnable):
-    """Chạy fn(). Nếu fn có tham số `progress` thì nhận progress(done, total);
-    nếu có tham số `report` thì nhận report(text) để hiện trên thanh trạng thái."""
 
     def __init__(self, fn: Callable) -> None:
         super().__init__()

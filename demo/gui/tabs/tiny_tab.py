@@ -1,4 +1,3 @@
-"""Tab 1 — Tiny RSA: ký / kiểm tra từng bước với số nhỏ (mặc định ví dụ slide p = 17, q = 11, e = 7, h = 88)."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -17,7 +16,6 @@ from demo.gui.widgets.step_view import StepView
 
 
 class IntField(QLineEdit):
-    """Ô nhập số nguyên không có nút tăng/giảm (QSpinBox bỏ nút thì Fusion + QSS co ô chữ về 1 px)."""
 
     def __init__(self, value: int, lo: int, hi: int) -> None:
         super().__init__(str(value))
@@ -54,9 +52,9 @@ class TinyTab(QWidget):
         self.signature: int | None = None
         lay = QVBoxLayout(self)
 
-        self.p, self.q, self.e = spin(17, 2), spin(11, 2), spin(7, 2)
-        self.h = spin(88)
-        self.s = spin(11)
+        self.p, self.q, self.e = spin(19, 2), spin(11, 2), spin(7, 2)
+        self.h = spin(42)
+        self.s = spin(0)
         self.message = QLineEdit("Xin chào RSA")
         self.use_h = QRadioButton("Giá trị băm h =")
         self.use_msg = QRadioButton("Thông điệp M =")
@@ -66,10 +64,10 @@ class TinyTab(QWidget):
         grp.addButton(self.use_msg)
         lay.addLayout(hbox(QLabel("p ="), self.p, QLabel("q ="), self.q, QLabel("e ="), self.e, None,
                            self.use_h, self.h, self.use_msg, self.message))
-        self.next_btn = button("Từng bước ▶", self.next_step)
+        self.next_btn = button("Từng bước", self.next_step)
         lay.addLayout(hbox(button("Ký", self.sign), QLabel("Chữ ký s ="), self.s, button("Kiểm tra", self.verify),
                            None, self.next_btn, button("Hiện tất cả", self.show_all),
-                           button("Ví dụ slide", self.slide_example), button("Xoá", self.clear)))
+                           button("Xoá", self.clear)))
         self.badge = ResultBadge()
         lay.addWidget(self.badge)
 
@@ -95,7 +93,6 @@ class TinyTab(QWidget):
         lay.addWidget(split, 1)
 
     def _check_primes(self) -> bool:
-        """Báo rõ p, q nào không phải số nguyên tố (kèm số nguyên tố gần nhất để gợi ý)."""
         problems = []
         for name, box in (("p", self.p), ("q", self.q)):
             v = box.value()
@@ -108,7 +105,7 @@ class TinyTab(QWidget):
             problems.append(f"p và q phải khác nhau (đang cùng bằng {self.p.value()})")
         if problems:
             msg = "\n".join(problems)
-            self.badge.set_result(False, msg, bad_text="❌ THAM SỐ KHÔNG HỢP LỆ")
+            self.badge.set_result(False, msg, bad_text="THAM SỐ KHÔNG HỢP LỆ")
             common.show_warning(self, "Tham số không hợp lệ", msg)
             return False
         return True
@@ -119,7 +116,7 @@ class TinyTab(QWidget):
         try:
             return TinyRSA(self.p.value(), self.q.value(), self.e.value())
         except ValueError as err:
-            self.badge.set_result(False, str(err), bad_text="❌ THAM SỐ KHÔNG HỢP LỆ")
+            self.badge.set_result(False, str(err), bad_text="THAM SỐ KHÔNG HỢP LỆ")
             common.show_warning(self, "Tham số không hợp lệ", str(err))
             return None
 
@@ -144,7 +141,6 @@ class TinyTab(QWidget):
                 table.setItem(r, c, item)
 
     def _show(self, log: StepLogger, reveal_all: bool, signing: bool) -> None:
-        """Hiện các bước; bảng Euclid và bảng bình phương và nhân lấy từ các Step có bảng."""
         self.steps.set_steps(log.steps, reveal_all)
         self.next_btn.setEnabled(not reveal_all)
         euclid = next((s for s in log.tables() if s.title.startswith("Euclid")), None)
@@ -164,7 +160,7 @@ class TinyTab(QWidget):
         try:
             s = tiny.sign(self._input(tiny), log)
         except ValueError as err:
-            self.badge.set_result(False, str(err), bad_text="❌ LỖI")
+            self.badge.set_result(False, str(err), bad_text="LỖI")
             return
         self.signature = s
         self.s.setValue(s)
@@ -181,15 +177,6 @@ class TinyTab(QWidget):
         self.badge.set_result(ok, f"s^e mod n = {self.s.value()}^{tiny.e} mod {tiny.n} "
                                   f"{'=' if ok else '≠'} h = {h}")
         self._show(log, True, signing=False)
-
-    def slide_example(self) -> None:
-        """Ví dụ trình chiếu: p=17, q=11, e=7, h=88; hiện từng bước bằng nút Từng bước."""
-        self.p.setValue(17)
-        self.q.setValue(11)
-        self.e.setValue(7)
-        self.h.setValue(88)
-        self.use_h.setChecked(True)
-        self.sign(reveal_all=False)
 
     def next_step(self) -> None:
         if not self.steps.next_step() or not self.steps.has_next():

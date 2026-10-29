@@ -1,4 +1,3 @@
-"""Kiểm tra nguyên tố Miller–Rabin và sinh số nguyên tố ngẫu nhiên (nguồn ngẫu nhiên: secrets)."""
 from __future__ import annotations
 
 import secrets

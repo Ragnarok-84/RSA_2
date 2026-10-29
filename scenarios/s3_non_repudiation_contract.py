@@ -1,14 +1,3 @@
-"""S3 — Chống chối bỏ: Alice ký hợp đồng (có chứng chỉ CA + dấu thời gian TSA) rồi chối.
-
-Trọng tài (toà án) kiểm tra:
-  1. chữ ký khớp khoá công khai trong chứng chỉ của Alice;
-  2. dấu thời gian của TSA gắn đúng chữ ký này và chữ ký của TSA hợp lệ;
-  3. chuỗi chứng chỉ của Alice hợp lệ, chưa bị thu hồi TẠI thời điểm ghi trong dấu thời gian.
-Đủ ba điều kiện → chỉ người giữ d_A mới tạo được chữ ký đó → Alice không thể chối.
-Bob cũng không thể vu cho Alice: sửa hợp đồng thì chữ ký không còn khớp.
-
-Tấn công tương ứng khi bỏ timestamp / nonce khỏi phần được ký: attacks/a8_replay_attack.py.
-"""
 from __future__ import annotations
 
 from core.rsa_keygen import RSAPublicKey, generate_keypair
@@ -30,11 +19,6 @@ FALLBACK_CONTRACT = "HỢP ĐỒNG MUA BÁN\nTổng giá trị hợp đồng: 2.
 def arbitrate(message: bytes, bundle: SignatureBundle, trusted_roots: list[Certificate], crl: CRL | list[CRL] | None,
               tsa_public_key: RSAPublicKey, now_time: int | None = None,
               intermediates: list[Certificate] = ()) -> VerifyResult:
-    """Trọng tài quyết định chữ ký trong bundle có ràng buộc người ký hay không.
-
-    Có dấu thời gian hợp lệ → xét chứng chỉ tại thời điểm trong dấu thời gian.
-    Không có → chỉ tin được thời điểm hiện tại.
-    """
     if bundle.signer_certificate is None:
         return VerifyResult(False, "không có chứng chỉ người ký")
     cert = Certificate.from_dict(bundle.signer_certificate)
@@ -64,20 +48,20 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     root.self_signed_root()
     tsa = TimestampAuthority.create("TSA ATBMTT", bits)
     tsa.certificate = root.issue(tsa.name, tsa.public_key)
-    alice_pub, alice_priv = generate_keypair(bits)
-    alice_cert = root.issue("Alice", alice_pub)
-    log.note("[1] Hạ tầng: Root CA cấp chứng chỉ cho Alice và cho TSA", alice_cert.describe())
+    trang_pub, trang_priv = generate_keypair(bits)
+    trang_cert = root.issue("Trang", trang_pub)
+    log.note("[1] Hạ tầng: Root CA cấp chứng chỉ cho trang và cho TSA", trang_cert.describe())
 
     contract = sample_bytes("messages/contract.txt", FALLBACK_CONTRACT)
-    sig = sign(contract, alice_priv)
+    sig = sign(contract, trang_priv)
     token = tsa.stamp(sig)
-    bundle = SignatureBundle("pkcs1v15", "contract.txt", "", sig.hex(), alice_cert.to_dict(), token.to_dict())
-    log.log("[2] Alice ký hợp đồng, TSA đóng dấu thời gian lên chữ ký",
+    bundle = SignatureBundle("pkcs1v15", "contract.txt", "", sig.hex(), trang_cert.to_dict(), token.to_dict())
+    log.log("[2] trang ký hợp đồng, TSA đóng dấu thời gian lên chữ ký",
             r"\mathrm{token} = \mathrm{Sign}_{d_{TSA}}(\mathrm{SHA256}(S) \| t)",
             f"S = {sig.hex()[:48]}…\nt = {fmt_time(token.time)}")
-    log.note("    Bob nhận gói (hợp đồng, S, chứng chỉ Alice, token) và lưu lại làm bằng chứng")
+    log.note("    thuy nhận gói (hợp đồng, S, chứng chỉ trang, token) và lưu lại làm bằng chứng")
 
-    log.head("[3] Tranh chấp: Alice chối 'Tôi chưa từng ký hợp đồng này' → trọng tài kiểm tra")
+    log.head("[3] Linh (Third Party) làm trọng tài: Trang chối 'Tôi chưa từng ký hợp đồng này' → trọng tài kiểm tra")
     crl = root.publish_crl()
     verdict = arbitrate(contract, bundle, [root.certificate], crl, tsa.public_key)
     tsa_chain = verify_chain(tsa.certificate, [], [root.certificate], crl)
@@ -88,15 +72,15 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     if edited == contract:
         edited = contract + b" "
     framed = arbitrate(edited, bundle, [root.certificate], crl, tsa.public_key)
-    log.log("[4] Bob sửa giá trị hợp đồng rồi dùng lại chữ ký của Alice", None, framed.reason,
+    log.log("[4] thuy sửa giá trị hợp đồng rồi dùng lại chữ ký của trang", None, framed.reason,
             level="bad" if framed.valid else "ok")
 
-    bob_pub, bob_priv = generate_keypair(bits)
-    bob_sig = sign(contract, bob_priv)
-    bob_bundle = SignatureBundle("pkcs1v15", "contract.txt", "", bob_sig.hex(), alice_cert.to_dict(),
-                                 tsa.stamp(bob_sig).to_dict())
-    framed2 = arbitrate(contract, bob_bundle, [root.certificate], crl, tsa.public_key)
-    log.log("[5] Bob tự ký bằng khoá của Bob rồi gắn chứng chỉ của Alice", None, framed2.reason,
+    thuy_pub, thuy_priv = generate_keypair(bits)
+    thuy_sig = sign(contract, thuy_priv)
+    thuy_bundle = SignatureBundle("pkcs1v15", "contract.txt", "", thuy_sig.hex(), trang_cert.to_dict(),
+                                 tsa.stamp(thuy_sig).to_dict())
+    framed2 = arbitrate(contract, thuy_bundle, [root.certificate], crl, tsa.public_key)
+    log.log("[5] thuy tự ký bằng khoá của thuy rồi gắn chứng chỉ của trang", None, framed2.reason,
             level="bad" if framed2.valid else "ok")
 
     backdated = SignatureBundle(**{**bundle.__dict__, "timestamp_token": {**token.to_dict(), "time": token.time - 86400 * 400}})
@@ -104,10 +88,10 @@ def run(logger: StepLogger | None = None, bits: int = 2048) -> ScenarioResult:
     log.log("[6] Sửa thời điểm trong dấu thời gian", None, r_back.reason, level="bad" if r_back.valid else "ok")
 
     valid = verdict.valid and tsa_chain.valid and not framed.valid and not framed2.valid and not r_back.valid
-    summary = ("Chứng chỉ CA + chữ ký + dấu thời gian ràng buộc Alice với hợp đồng: Alice không chối được, "
-               "Bob cũng không vu cho Alice được." if valid else "Kịch bản S3 không đạt.")
+    summary = ("Chứng chỉ CA + chữ ký + dấu thời gian ràng buộc trang với hợp đồng: trang không chối được, "
+               "thuy cũng không vu cho trang được." if valid else "Kịch bản S3 không đạt.")
     (log.ok if valid else log.bad)("[KẾT LUẬN] " + summary)
     return ScenarioResult(NAME, valid, summary, {
-        "verdict": verdict.reason, "bob_edits_contract": framed.valid, "bob_own_key": framed2.valid,
+        "verdict": verdict.reason, "thuy_edits_contract": framed.valid, "thuy_own_key": framed2.valid,
         "backdated_token": r_back.valid,
     })
