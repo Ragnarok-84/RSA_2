@@ -1,0 +1,126 @@
+/* Giao diện kính mờ: các khung bán trong suốt để ảnh nền (vẽ ở BackgroundWidget) lộ qua.
+   Kênh alpha trong rgba() ghi theo thang 0-255, ví dụ 89 = 0.35, 230 = 0.90.
+   Khung bao (tab, nhóm) trong suốt nhiều; vùng hiện chữ (log, bảng, ô nhập) gần đặc để dễ đọc.
+
+   Bảng màu:
+     #fff8a7       nền tab
+     #FFFDD0       nền khung, ô nhập, ô kết quả  = rgba(255, 242, 248, ...)
+     #f4a8d0       nút, tab đang chọn, ô tick    = rgba(244, 168, 208, ...)
+     #ee8fc0 / #e276b0      nút khi rê chuột / khi bấm
+     #c2185b       viền, tiêu đề nhóm            = rgba(194, 24, 91, ...)
+     #5a1a3c       chữ trên nền hồng đậm (trắng trên #f4a8d0 không đủ tương phản)
+     #3b2a35       màu chữ mặc định */
+
+QWidget { color: #3b2a35; }
+QLabel, QCheckBox, QRadioButton { background: transparent; }
+/* Khi QCheckBox/QRadioButton có QSS, Qt không tự vẽ ô chọn nữa nên phải khai báo */
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 14px; height: 14px;
+    background: rgba(255, 242, 248, 230);
+    border: 1px solid #c2185b;
+}
+QCheckBox::indicator { border-radius: 3px; }
+QRadioButton::indicator { border-radius: 8px; }
+QCheckBox::indicator:checked { background: #f4a8d0; }
+QRadioButton::indicator:checked {
+    background: qradialgradient(cx: 0.5, cy: 0.5, radius: 0.5, fx: 0.5, fy: 0.5,
+                                stop: 0 #c2185b, stop: 0.5 #c2185b, stop: 0.6 #fff2f8, stop: 1 #fff2f8);
+}
+
+QLabel#Title {
+    background: rgba(255, 242, 248, 210);          /* 0.82 */
+    color: #5a1a3c; font-size: 19px; font-weight: 700;
+    border: 1px solid #f4a8d0;
+    border-radius: 16px; padding: 6px 24px;
+}
+
+/* Tab */
+QTabWidget::pane {
+    background: rgba(255, 242, 248, 110);          /* 0.43 */
+    border: 1px solid rgba(244, 168, 208, 200);
+    border-radius: 12px;
+}
+QTabWidget > QStackedWidget > QWidget { background: transparent; }
+QTabBar::tab {
+    background: rgba(255, 248, 167, 225);          /* vàng #fff8a7, 0.88 */
+    color: #5a1a3c; font-weight: 600; padding: 7px 14px; margin-right: 3px;
+    border: 1px solid rgba(194, 24, 91, 60); border-bottom: none;
+    border-top-left-radius: 8px; border-top-right-radius: 8px;
+}
+QTabBar::tab:hover:!selected { background: #fff8a7; }
+QTabBar::tab:selected { background: #f4a8d0; color: #5a1a3c; font-weight: 700; }
+
+/* Nhóm */
+QGroupBox {
+    background: rgba(255, 242, 248, 100);          /* 0.40 */
+    border: 1px solid rgba(194, 24, 91, 90);
+    border-radius: 10px; margin-top: 22px; padding: 8px;
+}
+QGroupBox::title {                                 /* nằm hẳn trên viền vì nền tiêu đề trong suốt */
+    subcontrol-origin: margin; subcontrol-position: top left; left: 8px; padding: 0 2px;
+    background: transparent; color: #c2185b; font-weight: 700;
+}
+
+/* Ô nhập */
+QLineEdit, QSpinBox, QComboBox {
+    background: rgba(255, 242, 248, 225);          /* 0.88 */
+    border: 1px solid rgba(194, 24, 91, 90);
+    border-radius: 6px; padding: 3px 6px;
+}
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
+    background: #fff2f8;
+    border: 1px solid #c2185b;
+}
+QLineEdit:read-only { background: rgba(250, 236, 243, 225); }
+QComboBox QAbstractItemView {                      /* danh sách xổ xuống: nền đặc cho dễ đọc */
+    background: #fff2f8;
+    selection-background-color: #f4a8d0; selection-color: #5a1a3c;
+}
+
+/* Bảng, ô văn bản, danh sách */
+QTableView, QTextEdit, QPlainTextEdit, QListView, QTreeView {
+    background: rgba(255, 242, 248, 235);          /* 0.92: vùng chữ gần đặc cho dễ đọc */
+    border: 1px solid rgba(194, 24, 91, 70);
+    border-radius: 10px;
+    alternate-background-color: rgba(252, 232, 242, 235);
+    selection-background-color: #f4a8d0; selection-color: #5a1a3c;
+}
+QTextEdit:focus, QPlainTextEdit:focus { border: 1px solid #c2185b; }
+QPlainTextEdit:disabled { background: rgba(240, 228, 234, 200); color: #9a8590; }
+/* Viewport của vùng cuộn có nền trắng riêng: phải để trong suốt thì khung mới bán trong suốt thật */
+QAbstractScrollArea > QWidget#qt_scrollarea_viewport { background: transparent; }
+QScrollArea { background: transparent; border: none; }
+QScrollArea > QWidget > QWidget { background: transparent; }
+QHeaderView { background: transparent; }
+QHeaderView::section {
+    background: rgba(255, 248, 167, 235);          /* tiêu đề cột cùng màu vàng với tab */
+    color: #5a1a3c;
+    border: none; border-bottom: 1px solid rgba(194, 24, 91, 90);
+    padding: 4px; font-weight: 700;
+}
+QTableCornerButton::section { background: transparent; border: none; }
+QSplitter::handle { background: transparent; }
+
+/* Thanh cuộn mảnh, nền trong suốt */
+QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
+QScrollBar:horizontal { background: transparent; height: 10px; margin: 2px; }
+QScrollBar::handle:vertical { background: rgba(194, 24, 91, 90); border-radius: 3px; min-height: 30px; }
+QScrollBar::handle:horizontal { background: rgba(194, 24, 91, 90); border-radius: 3px; min-width: 30px; }
+QScrollBar::handle:hover { background: rgba(194, 24, 91, 160); }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+
+/* Nút */
+QPushButton {
+    background: #f4a8d0; color: #5a1a3c; font-weight: 600;
+    border: 1px solid rgba(194, 24, 91, 70); border-radius: 6px; padding: 6px 12px;
+}
+QPushButton:hover { background: #ee8fc0; }
+QPushButton:pressed { background: #e276b0; }
+QPushButton:disabled { background: rgba(244, 168, 208, 100); color: rgba(90, 26, 60, 120); border-color: transparent; }
+
+/* Thanh trạng thái */
+QStatusBar { background: #5a1a3c; color: white; }
+QStatusBar QLabel { color: white; padding: 2px 6px; }
+QProgressBar { background: #7a3a5c; border: none; border-radius: 4px; max-height: 8px; }
+QProgressBar::chunk { background: #f4a8d0; border-radius: 4px; }

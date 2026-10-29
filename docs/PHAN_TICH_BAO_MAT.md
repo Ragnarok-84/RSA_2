@@ -66,7 +66,7 @@ EM = 00 ‖ maskedSeed ‖ maskedDB   →   C = EM^e mod N
 * Giới hạn: một khối chỉ chứa được tối đa `k − 66` byte (190 byte với khoá 2048 bit). Vì vậy dữ liệu dài
   phải dùng **mã hoá lai** (mục 4).
 
-**Đối chiếu** (`tests/doi_chieu.py`): bản mã do nhóm tạo được thư viện `cryptography` giải đúng, và ngược lại
+**Đối chiếu** (`tests/cross_check.py`): bản mã do nhóm tạo được thư viện `cryptography` giải đúng, và ngược lại
 bản mã do thư viện tạo được chương trình của nhóm giải đúng. Như vậy cài đặt OAEP khớp chuẩn.
 
 ---
@@ -172,7 +172,7 @@ này không còn, vì chữ ký được đặt vào bên trong dữ liệu mã 
 
 * `python -m unittest discover -s tests`: 82 ca kiểm thử, gồm cả ca nhóm tự viết và ca đối chiếu chuẩn. Tất cả đều đạt.
   Khi chưa cài `cryptography` thì 3 ca đối chiếu với thư viện được bỏ qua.
-* `python tests/doi_chieu.py`: 29/29 khớp. Trong đó có test vector NIST cho SHA-256, RFC 4231 cho HMAC,
+* `python tests/cross_check.py`: 29/29 khớp. Trong đó có test vector NIST cho SHA-256, RFC 4231 cho HMAC,
   PBKDF2 so với `hashlib`, **chữ ký PKCS#1 v1.5 trùng từng bit với `cryptography`**, còn chữ ký PSS và OAEP
   tương thích hai chiều.
 * `python demo/benchmark.py`: kết quả đo trên máy của nhóm, Python 3.12:
@@ -194,7 +194,7 @@ dài khoảng bằng N.
 3. Đã cài RSASSA-PSS (đệm ngẫu nhiên, có chứng minh an toàn chặt) nhưng mặc định vẫn dùng PKCS#1 v1.5 để
    chữ ký đối chiếu được từng bit. Dòng khoá tự cài nên thay bằng AES-GCM.
 4. PKI mới ở mức mô phỏng: chưa có chuỗi CA trung gian và chưa có OCSP. Bản đối chiếu dùng chứng thư
-   X.509 thật nằm ở `tests/doi_chieu_x509.py`.
+   X.509 thật nằm ở `tests/cross_check_x509.py`.
 
 ## Tài liệu tham khảo
 

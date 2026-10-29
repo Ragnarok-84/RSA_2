@@ -1,9 +1,4 @@
-#Tệp: core/sha256.py   [Báo cáo 3.3 - SHA-256; 2.5]
-# Hàm băm SHA-256 (FIPS 180-4) tự cài đặt.
-#   - hash_sha256(message): băm cả thông điệp một lần, trả về chuỗi hex
-#   - SHA256(): băm theo từng phần (update nhiều lần) — dùng cho tệp lớn
-#   - sha256_bytes(message): trả về 32 byte thô (dùng cho HMAC, MGF1, OAEP)
-
+"""Hàm băm SHA-256 (FIPS 180-4)."""
 # 8 giá trị ban đầu của SHA-256
 H0 = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -26,12 +21,10 @@ K = [
 def _compress(H, block):
     """Hàm nén: xử lý một block 512 bit (64 byte), cập nhật 8 giá trị băm H tại chỗ."""
     W = []
-    # 16 giá trị đầu tiên lấy trực tiếp từ block
     for i in range(16):
         word = int.from_bytes(block[i * 4:(i + 1) * 4], byteorder='big')
         W.append(word)
 
-    # Tạo 48 giá trị còn lại
     for i in range(16, 64):
         s0 = (((W[i - 15] >> 7) | (W[i - 15] << 25)) ^
               ((W[i - 15] >> 18) | (W[i - 15] << 14)) ^
@@ -43,10 +36,8 @@ def _compress(H, block):
 
         W.append((W[i - 16] + s0 + W[i - 7] + s1) & 0xffffffff)
 
-    # Khởi tạo 8 biến làm việc
     a, b, c, d, e, f, g, h = H
 
-    # 64 vòng tính toán SHA-256
     for i in range(64):
         S1 = (((e >> 6) | (e << 26)) ^
               ((e >> 11) | (e << 21)) ^
@@ -131,7 +122,6 @@ def hash_file(path, chunk_size=64 * 1024):
     return h.hexdigest()
 
 
-# --- Chạy thử ---
 if __name__ == "__main__":
     msg = input("Nhập dữ liệu: ")
     result = hash_sha256(msg)

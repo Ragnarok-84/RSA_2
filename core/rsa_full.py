@@ -1,15 +1,4 @@
-# Tệp: core/rsa_full.py
-# [Báo cáo 2.2 - Bộ năm (P, A, K, S, V); 3.2 - Sinh khóa, ký, kiểm tra]
-# Hệ chữ ký điện tử RSA BẢN ĐẦY ĐỦ (khóa >= 2048 bit), ký trên giá trị băm SHA-256.
-#
-#   P : tập thông điệp (chuỗi byte bất kỳ, độ dài tùy ý — vì ký trên SHA-256(M))
-#   A : tập chữ ký = Z_N
-#   K : tập khóa  = {(N, e, d) : N = p*q, e*d ≡ 1 mod phi(N)}  — sinh bởi generate_keypair
-#   S : Sig_d(M) = Pad(SHA256(M))^d mod N
-#   V : Ver_e(M, S) = True  <=>  S^e mod N là khối đệm hợp lệ của SHA256(M)
-#
-# Hai lược đồ đệm (core/padding.py): "pkcs1v15" (mặc định, tất định) và "pss" (ngẫu nhiên hóa).
-# Bổ sung TÍNH BẢO MẬT: mã hóa / giải mã RSA-OAEP (chữ ký không che giấu nội dung).
+"""Chữ ký RSA ký trên giá trị băm SHA-256 và mã hóa RSA-OAEP."""
 import os
 import sys
 
@@ -29,9 +18,7 @@ class DecryptionError(DecodingError):
     """Giải mã OAEP thất bại (sai khóa, sai nhãn hoặc bản mã bị sửa)."""
 
 
-# ------------------------------------------------------------------ #
 # S: KÝ
-# ------------------------------------------------------------------ #
 def sign_hash(hash_value, private_key, scheme="pkcs1v15"):
     """Ký trên một giá trị băm có sẵn (hex). Dùng khi băm tệp lớn theo từng khối."""
     d, N = private_key
@@ -54,9 +41,7 @@ def sign_message(message, private_key, scheme="pkcs1v15"):
     return sign_hash(hash_sha256(message), private_key, scheme)
 
 
-# ------------------------------------------------------------------ #
 # V: KIỂM TRA
-# ------------------------------------------------------------------ #
 def verify_signature(signature, public_key):
     """
     (PKCS#1 v1.5) Gỡ chữ ký số để lấy bản băm B.
@@ -104,9 +89,7 @@ def explain_sign(message, private_key, public_key):
             "hash_recovered": parse_em_strict(em2), "valid": verify_message(message, s, public_key)}
 
 
-# ------------------------------------------------------------------ #
 # Bổ sung TÍNH BẢO MẬT: mã hóa RSA
-# ------------------------------------------------------------------ #
 def textbook_encrypt(m, public_key):
     """RSA sách giáo khoa C = M^e mod N — TẤT ĐỊNH, chỉ để minh họa và so sánh."""
     e, N = public_key

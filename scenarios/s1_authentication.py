@@ -1,9 +1,4 @@
-"""
-scenarios/s1_authentication.py
-[Báo cáo 4.2, 4.7, 6.5]
-Kịch bản S1: Xác thực danh tính người dùng (Authentication) bằng Thách - Đáp (Challenge-Response)
-và chữ ký số: Server gửi nonce ngẫu nhiên, Thu Trang ký nonce, Server kiểm tra bằng khóa trong chứng thư.
-"""
+"""Kịch bản S1: xác thực bằng thách - đáp và chữ ký số."""
 import os
 import sys
 

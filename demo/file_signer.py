@@ -1,16 +1,4 @@
-# Tệp: demo/file_signer.py   [Báo cáo 6.2 - Demo trên dữ liệu thật]
-# Làm việc với DỮ LIỆU THẬT (tệp văn bản, ảnh...):
-#   - Lưu / nạp khóa RSA dạng JSON; khóa riêng có thể được mã hóa bằng mật khẩu (PBKDF2 + HMAC)
-#   - Ký tệp  -> <tệp>.sig.json     ; kiểm tra chữ ký tệp
-#   - Ký rồi mã hóa tệp -> <tệp>.enc.json ; giải mã + kiểm tra chữ ký
-#
-# Dòng lệnh:
-#   python demo/file_signer.py keygen --name thutrang --bits 2048 [--usage signature|encryption] [--password]
-#   python demo/file_signer.py sign   <tệp> --key thutrang.private.json
-#   python demo/file_signer.py verify <tệp> --pub thutrang.public.json [--sig <tệp>.sig.json]
-#   python demo/file_signer.py seal   <tệp> --key thutrang.private.json --to thuthuy_enc.public.json
-#   python demo/file_signer.py open   <tệp>.enc.json --key thuthuy_enc.private.json --sender thutrang.public.json --out thu_muc
-#   python demo/file_signer.py demo
+"""Ký, kiểm tra, ký rồi mã hóa tệp thật."""
 import argparse
 import getpass
 import json
@@ -33,9 +21,7 @@ PBKDF2_ITERATIONS = 2000      # demo; thực tế OWASP khuyến nghị >= 600.0
 ALGORITHM = "RSASSA-PKCS1-v1_5 + SHA-256"
 
 
-# ------------------------------------------------------------------ #
 # Lưu / nạp khóa
-# ------------------------------------------------------------------ #
 def save_keypair(name, private_key, public_key, workdir=".", usage="signature", password=None):
     """Ghi <name>.private.json và <name>.public.json. Trả về (đường dẫn khóa riêng, khóa công khai)."""
     os.makedirs(workdir, exist_ok=True)
@@ -90,9 +76,7 @@ def load_public_key(path, with_owner=False):
     return (key, data["owner"]) if with_owner else key
 
 
-# ------------------------------------------------------------------ #
 # Ký / kiểm tra tệp
-# ------------------------------------------------------------------ #
 def sign_file(path, private_key, signer="?", sig_path=None):
     h = hash_file(path)
     s = sign_hash(h, private_key)
@@ -116,9 +100,7 @@ def verify_file(path, public_key, sig_path=None):
     return True, f"Chữ ký hợp lệ của '{sig['signer']}' lúc {sig['time']}"
 
 
-# ------------------------------------------------------------------ #
 # Ký rồi mã hóa tệp
-# ------------------------------------------------------------------ #
 def seal_file(path, sender, sender_private_key, recipient, recipient_public_key, out_path=None):
     with open(path, "rb") as f:
         data = f.read()
@@ -145,9 +127,7 @@ def open_file(env_path, me, my_private_key, sender_keys, out_dir="."):
     return out_path, res
 
 
-# ------------------------------------------------------------------ #
 # Demo trên tệp thật
-# ------------------------------------------------------------------ #
 HERE = ROOT
 DEFAULT_SAMPLE = os.path.join(ROOT, "samples", "anh_mau.png")
 
@@ -216,9 +196,7 @@ def demo_seal_file(path=None, keysize=1024, workdir=None, verbose=True):
             "seal_seconds": t_seal, "open_seconds": t_open, "output": out}
 
 
-# ------------------------------------------------------------------ #
 # Dòng lệnh
-# ------------------------------------------------------------------ #
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Ký / kiểm tra / ký-rồi-mã-hóa tệp bằng RSA tự cài")
     sub = ap.add_subparsers(dest="cmd", required=True)

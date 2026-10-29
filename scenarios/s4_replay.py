@@ -1,14 +1,4 @@
-"""
-scenarios/s4_replay.py
-[Báo cáo 4.5, 4.7, 6.5]
-Kịch bản S4: Tấn công phát lại (Replay Attack) và cách chống bằng nonce + dấu thời gian.
-
-Chữ ký chỉ chứng minh "Thu Trang đã ký nội dung này", KHÔNG chứng minh "Thu Trang muốn thực hiện lần này".
-Mai Phương nghe lén một lệnh chuyển tiền hợp lệ rồi gửi lại nhiều lần: chữ ký vẫn đúng.
-  Phần A — Ngân hàng chỉ kiểm tra chữ ký  : lệnh bị thực hiện 3 lần.
-  Phần B — Lệnh chứa nonce do ngân hàng cấp + thời điểm, nonce dùng một lần, có hạn: lần phát lại bị từ chối.
-           Mai Phương sửa nonce trong lệnh để "làm mới" -> chữ ký hỏng.
-"""
+"""Kịch bản S4: tấn công phát lại."""
 import json
 import os
 import sys

@@ -1,4 +1,3 @@
-# Tệp: tests/test_padding.py   [Báo cáo 5.4 - Bộ kiểm thử; 3.4 - PKCS#1 v1.5, PSS]
 import os
 import sys
 import unittest

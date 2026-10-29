@@ -1,10 +1,4 @@
-# Tệp: pki/timestamp.py
-# [Báo cáo 4.4 - Dấu thời gian; 4.5 - Nonce, chống phát lại]
-#   - TimestampAuthority: TSA ký lên cặp (SHA256(chữ ký), thời điểm) -> bằng chứng chữ ký đã tồn tại
-#     tại thời điểm đó. Nhờ vậy chữ ký vẫn có giá trị sau khi chứng thư hết hạn / bị thu hồi,
-#     nếu chữ ký được tạo TRƯỚC thời điểm thu hồi.
-#   - NonceRegistry: phát nonce ngẫu nhiên dùng MỘT lần, có hạn dùng -> gói tin đã ký bị phát lại
-#     (replay) sẽ bị từ chối.
+"""Dấu thời gian (TSA) và nonce chống phát lại."""
 import os
 import secrets
 import sys

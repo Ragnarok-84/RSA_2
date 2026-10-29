@@ -1,61 +1,59 @@
-# Tệp: tests/test_gui.py   [bổ sung - Báo cáo 6.1: giao diện đồ họa dựng được và gọi đúng thuật toán]
 import os
 import sys
 import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")    # chạy được cả khi không có màn hình (máy chủ CI)
 
 try:
-    import tkinter as tk
-    from tkinter import messagebox
-    from demo import gui
-except ImportError:                     # Python không kèm Tk
-    gui = None
+    from PySide6.QtWidgets import QApplication
+    from demo.gui import widgets
+    from demo.gui.run import MainWindow, create_app
+except ImportError:                     # chưa cài PySide6
+    widgets = None
 
 from core.rsa_math import generate_keypair
 
 
-@unittest.skipIf(gui is None, "Python này không có tkinter")
+@unittest.skipIf(widgets is None, "chưa cài PySide6 (pip install -r requirements-gui.txt)")
 class TestGui(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        try:
-            cls.app = gui.App(autostart=False)
-        except tk.TclError as err:      # không có màn hình (máy chủ CI)
-            raise unittest.SkipTest(f"không mở được cửa sổ: {err}")
-        cls.app.withdraw()
+        create_app()
+        cls.app = MainWindow(autostart=False)
         cls.dialogs = []
-        for name in ("showinfo", "showwarning", "showerror"):
-            setattr(messagebox, name, lambda *a, **k: cls.dialogs.append(a))
-        for n in gui.PEOPLE:
+        for name in ("show_info", "show_warning", "show_error"):
+            setattr(widgets, name, lambda *a, **k: cls.dialogs.append(a))
+        for n in widgets.PEOPLE:
             cls.app.keys[n] = generate_keypair(keysize=1024)
 
     @classmethod
     def tearDownClass(cls):
-        cls.app.destroy()
+        cls.app.close()
 
     def wait(self):
         deadline = time.time() + 120
         while time.time() < deadline:
-            self.app.update()
+            QApplication.processEvents()
+            self.app._poll()
             if not self.app._busy and self.app._q.empty():
-                self.app.update()
+                QApplication.processEvents()
                 return
             time.sleep(0.02)
         self.fail("tác vụ nền không kết thúc")
 
     def test_a_starts_empty(self):              # tên bắt đầu bằng "a" để chạy trước các ca điền dữ liệu
-        self.assertEqual(self.app.mini_tab.vars["p"].get(), "")
-        self.assertEqual(self.app.key_tab.p.get(), "")
-        self.assertEqual(self.app.conf_tab.src.path.get(), "")
-        self.assertEqual(self.app.conf_tab.src.text.get("1.0", "end-1c"), "")
-        self.assertEqual(self.app.sign_tab.result.cget("text"), "")
+        self.assertEqual(self.app.mini_tab.vars["p"].text(), "")
+        self.assertEqual(self.app.key_tab.p.text(), "")
+        self.assertEqual(self.app.conf_tab.src.path.text(), "")
+        self.assertEqual(self.app.conf_tab.src.text.toPlainText(), "")
+        self.assertEqual(self.app.sign_tab.result.text(), "")
 
     def test_empty_input_warns(self):
         mt = self.app.mini_tab
         mt.compute()
-        self.assertIn("Hãy nhập đủ p, q, e, M", mt.out.get("1.0", "end"))
+        self.assertIn("Hãy nhập đủ p, q, e, M", mt.out.text())
         before = len(self.dialogs)
         self.assertIsNone(self.app.sign_tab.src.read())
         self.assertEqual(len(self.dialogs), before + 1)
@@ -63,30 +61,59 @@ class TestGui(unittest.TestCase):
     def test_mini_tab_class_example(self):
         mt = self.app.mini_tab
         for k, v in (("p", "17"), ("q", "11"), ("e", "7"), ("M", "88")):
-            mt.vars[k].set(v)
+            mt.vars[k].setText(v)
         mt.compute()
-        out = mt.out.get("1.0", "end")
+        out = mt.out.text()
         self.assertIn("=> C = 11", out)
         self.assertIn("=> S = 11", out)
 
+    def test_key_table_lists_people(self):
+        kt = self.app.key_tab
+        kt.refresh()
+        self.assertEqual(kt.table.rowCount(), len(widgets.PEOPLE))
+        kt.table.selectRow(2)
+        self.assertEqual(kt.who.currentData(), widgets.PEOPLE[2])
+        self.assertIn(f"Khóa của {widgets.PEOPLE[2]}", kt.out.text())
+
+    def test_small_manual_key_keeps_current_keys(self):
+        kt = self.app.key_tab
+        before = dict(self.app.keys)
+        kt.who.setCurrentText("Tất cả")
+        for w, v in ((kt.p, "17"), (kt.q, "11"), (kt.e, "7")):
+            w.setText(v)
+        kt.gen_manual()
+        self.assertEqual(self.app.keys, before)
+        self.assertIn("KHÔNG thay khóa đang dùng", kt.out.text())
+
+    def test_startup_generates_keys_for_everyone(self):
+        win = MainWindow(autostart=True)
+        deadline = time.time() + 120
+        while (win._busy or not win._q.empty()) and time.time() < deadline:
+            QApplication.processEvents()
+            win._poll()
+            time.sleep(0.02)
+        self.assertEqual(set(win.keys), set(widgets.PEOPLE))
+        self.assertTrue(all(pub[1].bit_length() >= 2047 for _, pub in win.keys.values()))
+        win.close()
+
     def test_sign_then_tamper(self):
         st = self.app.sign_tab
-        st.src.text.insert("1.0", "Hợp đồng số 01: Thu Trang bán lô hàng A cho Thu Thủy.")
+        st.src.text.setPlainText("Hợp đồng số 01: Thu Trang bán lô hàng A cho Thu Thủy.")
         st.sign(); self.wait()
         st.verify(); self.wait()
-        self.assertEqual(st.result.cget("text"), "CHỮ KÝ HỢP LỆ")
-        st.recv.insert("end", "!")
+        self.assertEqual(st.result.text(), "CHỮ KÝ HỢP LỆ")
+        st.recv.setPlainText(st.recv.toPlainText() + "!")
         st.verify(); self.wait()
-        self.assertEqual(st.result.cget("text"), "CHỮ KÝ KHÔNG HỢP LỆ")
+        self.assertEqual(st.result.text(), "CHỮ KÝ KHÔNG HỢP LỆ")
 
     def test_seal_open_and_eve_blocked(self):
         ct = self.app.conf_tab
-        ct.src.text.insert("1.0", "Mã khóa két sắt: 7-3-9-1.")
+        ct.src.text.setPlainText("Mã khóa két sắt: 7-3-9-1.")
         self.dialogs.clear()
         ct.seal(); self.wait()
         ct.bob_open(); self.wait()
         ct.eve_open(); self.wait()
-        log = ct.log.get("1.0", "end")
+        log = ct.log.text()
         self.assertIn("giống hệt bản gốc: True", log)
         self.assertIn("(tấn công bị chặn)", log)
         self.assertEqual(self.dialogs, [])

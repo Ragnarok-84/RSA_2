@@ -1,12 +1,4 @@
-# Tệp: pki/cert.py
-# [Báo cáo 4.2 - Tính chứng thực; 4.3 - Tính không chối bỏ]
-# Chứng thư số và Tổ chức chứng thực (CA - Certificate Authority), tự cài trên core/rsa_full:
-#   - CertificateAuthority: cấp chứng thư (gắn danh tính <-> khóa công khai), thu hồi (pki/crl.py)
-#   - verify_certificate  : kiểm tra bên cấp, chữ ký CA, thời hạn, thu hồi, mục đích sử dụng khóa
-#
-# Chứng thư có trường key_usage ("signature" | "encryption"): một cặp khóa chỉ nên dùng cho MỘT
-# mục đích. Dùng chung khóa ký và khóa giải mã thì "nhờ ký" một bản mã = giải mã giúp kẻ tấn công
-# (xem attacks/confidentiality.py).
+"""Chứng thư số và tổ chức chứng thực (CA)."""
 import json
 import os
 import sys
@@ -22,9 +14,7 @@ DATE_FMT = "%Y-%m-%d"
 USAGES = ("signature", "encryption", "ca", "timestamp")
 
 
-# ---------------------------------------------------------------
 # Hàm ký / xác thực dữ liệu bất kỳ (băm SHA-256 + đệm PKCS#1 v1.5 + RSA)
-# ---------------------------------------------------------------
 def sign_data(data, private_key):
     """Ký số: S = (padding(SHA256(data)))^d mod N"""
     return sign_message(data, private_key)
@@ -38,9 +28,7 @@ def verify_data(data, signature, public_key):
         return False
 
 
-# ---------------------------------------------------------------
 # Chứng thư số
-# ---------------------------------------------------------------
 TBS_FIELDS = ("serial", "subject", "issuer", "public_key", "not_before", "not_after", "key_usage")
 
 
@@ -135,9 +123,6 @@ def verify_certificate(cert, ca_cert, crl=None, now=None, usage=None):
     return True, "Chứng thư hợp lệ"
 
 
-# ---------------------------------------------------------------
-# Chạy thử
-# ---------------------------------------------------------------
 def run_demo(keysize=1024, verbose=True):
     say = print if verbose else (lambda *a, **k: None)
     r = {}

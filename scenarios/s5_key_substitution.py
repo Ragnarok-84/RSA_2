@@ -1,9 +1,4 @@
-"""
-scenarios/s5_key_substitution.py
-[Báo cáo 4.2, 4.7, 6.5]
-Kịch bản S5: Tấn công thay thế khóa công khai (Key Substitution / Man-in-the-Middle).
-Minh họa vai trò của chứng thư CA: không có chứng thư thì Thu Thủy bị lừa; có chứng thư thì phát hiện.
-"""
+"""Kịch bản S5: tấn công thay thế khóa công khai."""
 import os
 import sys
 
@@ -25,7 +20,7 @@ def run_scenario_s5(keysize=1024, verbose=True):
 
     say("[1] Thu Trang công bố khóa công khai thật; Mai Phương chặn đường truyền và tráo bằng khóa của Mai Phương.")
 
-    # ---------- Trường hợp A: không có chứng thư ----------
+    # Trường hợp A: không có chứng thư
     say("\n--- TRƯỜNG HỢP A: KHÔNG DÙNG CHỨNG THƯ CA ---")
     received_key = eve_pub                      # Thu Thủy nhận phải khóa đã bị tráo, không có cách phát hiện
     cipher = mod_exp(secret, received_key[0], received_key[1])
@@ -37,7 +32,7 @@ def run_scenario_s5(keysize=1024, verbose=True):
     if case_a_attack_works:
         say("    [!] Thảm họa: Mai Phương đọc trộm thành công, Thu Trang không đọc được gì.")
 
-    # ---------- Trường hợp B: có chứng thư ----------
+    # Trường hợp B: có chứng thư
     say("\n--- TRƯỜNG HỢP B: CÓ CHỨNG THƯ CA (PKI) ---")
     ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
     alice_cert = ca.issue_certificate("Thu Trang", alice_pub)

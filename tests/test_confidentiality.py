@@ -1,4 +1,3 @@
-# Tệp: tests/test_confidentiality.py   [bổ sung - TÍNH BẢO MẬT: ký rồi mã hóa, tệp thật, bảo vệ khóa riêng]
 import os
 import sys
 import tempfile

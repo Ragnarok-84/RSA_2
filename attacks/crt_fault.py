@@ -1,12 +1,4 @@
-"""
-attacks/crt_fault.py
-[Báo cáo 3.6.2 - Lỗi khi ký bằng CRT (Boneh–DeMillo–Lipton 1997, biến thể Lenstra); 6.4]
-Thẻ thông minh / HSM thường ký bằng định lý số dư Trung Hoa (CRT) cho nhanh gấp ~4 lần:
-    s_p = EM^(d mod p-1) mod p,   s_q = EM^(d mod q-1) mod q,   S = ghép (s_p, s_q) bằng CRT.
-Nếu một lỗi phần cứng (sụt áp, tia laser, quá nhiệt) làm sai s_q, chữ ký lỗi S' vẫn đúng modulo p
-nhưng sai modulo q, nên:   gcd(S'^e - EM, N) = p.
-Chỉ MỘT chữ ký lỗi + thông điệp (EM của PKCS#1 v1.5 là tất định) là đủ phân tích N.
-"""
+"""Tấn công lỗi phần cứng khi ký RSA bằng CRT."""
 import os
 import sys
 

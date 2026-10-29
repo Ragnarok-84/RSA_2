@@ -1,14 +1,4 @@
-"""
-demo/avalanche.py
-[Báo cáo 2.5 - Lý do ký trên giá trị băm]
-Minh họa vì sao hệ chữ ký RSA ký trên SHA-256(M) thay vì ký trực tiếp M:
-  1. Hiệu ứng thác lũ: đổi 1 bit của M -> khoảng 50% bit của SHA-256(M) đổi theo,
-     nên không thể sửa M mà giữ nguyên giá trị đã ký.
-  2. Kích thước: RSA chỉ ký được số < N. Ký trực tiếp một tệp 88 KB phải chia hàng trăm khối,
-     mỗi khối một phép lũy thừa; ký trên băm luôn chỉ 1 phép lũy thừa cho 32 byte.
-  3. Ký từng khối rời rạc còn cho phép kẻ tấn công đổi chỗ / xóa / ghép khối mà chữ ký từng khối vẫn đúng.
-  4. Tính đồng cấu của RSA thô bị phá (xem attacks/forgery_no_padding.py).
-"""
+"""Hiệu ứng thác lũ và lý do ký trên giá trị băm."""
 import os
 import sys
 import time

@@ -1,10 +1,4 @@
-"""
-demo/cli.py
-[Báo cáo 6.1 - Kịch bản demo; 6.2 - Dữ liệu thật]
-Giao diện dòng lệnh (CLI) chạy thử hệ chữ ký điện tử RSA: thuật toán, kịch bản an toàn S1-S6, tấn công.
-Giao diện chỉ gọi các module trong core/, pki/, scenarios/, attacks/ (tách phần thuật toán khỏi giao diện).
-Chạy từ thư mục gốc dự án:   python demo/cli.py
-"""
+"""Menu demo dạng dòng lệnh."""
 import os
 import sys
 
@@ -46,9 +40,7 @@ def read_text(prompt, default):
     return raw or default
 
 
-# ------------------------------------------------------------------ #
 # Chức năng tương tác
-# ------------------------------------------------------------------ #
 def interactive_sign():
     print("\n--- KÝ & KIỂM TRA THÔNG ĐIỆP ---")
     message = read_text("Nhập thông điệp cần ký", "Tôi đồng ý thanh toán 10.000.000 VNĐ")
@@ -103,6 +95,8 @@ def interactive_seal():
     print("\n[Thu Trang -> Thu Thủy] Phong bì trên đường truyền (Mai Phương thấy):")
     for k, v in env.items():
         print(f"   {k:<5}: {v[:70]}{'...' if len(v) > 70 else ''}")
+    print("   (ek = C1: khóa phiên K bọc bằng RSA-OAEP khóa công khai Thu Thủy;"
+          " ct = C2: (P, S) mã hóa bằng khóa phiên K)")
     e_priv, _ = generate_keypair(keysize=bits)
     try:
         sm.open_sealed(env, "Mai Phương", e_priv, {"Thu Trang": a_pub}.get)
@@ -156,10 +150,10 @@ def run_benchmark_menu():
     benchmark.run_benchmark(real=real)
 
 
-def run_doi_chieu():
+def run_cross_check():
     sys.path.insert(0, os.path.join(ROOT, "tests"))
-    import doi_chieu
-    doi_chieu.run()
+    import cross_check
+    cross_check.run()
 
 
 MENU = [
@@ -204,7 +198,7 @@ MENU = [
         ("27", "Chạy toàn bộ 13 tấn công + bảng tổng kết", lambda: run_all_attacks()),
     ]),
     ("KIỂM THỬ & ĐÁNH GIÁ", [
-        ("28", "Đối chiếu test vector NIST / RFC / thư viện chuẩn", run_doi_chieu),
+        ("28", "Đối chiếu test vector NIST / RFC / thư viện chuẩn", run_cross_check),
         ("29", "Benchmark tốc độ theo kích thước khóa và dữ liệu", run_benchmark_menu),
         ("30", "Chạy bộ test (tests/)", run_full_tests),
     ]),

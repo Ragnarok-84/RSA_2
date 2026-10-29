@@ -1,16 +1,4 @@
-"""
-scenarios/s6_confidentiality.py
-[Bổ sung theo nhận xét của giảng viên - TÍNH BẢO MẬT]
-Kịch bản S6: TÍNH BẢO MẬT (Confidentiality) — chữ ký số KHÔNG giữ bí mật nội dung.
-
-  A. Chỉ ký          : Mai Phương đọc được toàn bộ nội dung (chữ ký đúng nhưng không che gì).
-  B. Ký rồi mã hóa   : Mai Phương chỉ thấy bản mã; Thu Thủy mở được và xác định chắc chắn người gửi là Thu Trang.
-  C. Mai Phương sửa bản mã  : HMAC phát hiện.
-  D. Mai Phương tự mã hóa thư giả nhân danh Thu Trang (ai cũng có khóa công khai của Thu Thủy!) : chữ ký chặn.
-  E. Thu Thủy chuyển tiếp lén thư của Thu Trang cho Tuyết Linh : trường "to" trong phần ký chặn.
-  F. Dùng khóa KÝ của Thu Trang để mã hóa : chứng thư (key_usage) từ chối.
-Cuối cùng in bảng so sánh: Chỉ ký / Chỉ mã hóa / Ký rồi mã hóa theo 4 tính chất an toàn.
-"""
+"""Kịch bản S6: tính bảo mật."""
 import os
 import sys
 
@@ -32,7 +20,7 @@ def run_scenario_s6(keysize=1024, verbose=True):
     say("KỊCH BẢN S6: TÍNH BẢO MẬT (CONFIDENTIALITY)")
     say("=======================================================")
 
-    # --- Thiết lập PKI: mỗi người 2 cặp khóa, một để KÝ, một để MÃ HÓA ---
+    # Thiết lập PKI: mỗi người 2 cặp khóa, một để KÝ, một để MÃ HÓA
     ca = CertificateAuthority("CA Goc ATBMTT", keysize=keysize)
     people = {}
     for name in ("Thu Trang", "Thu Thủy", "Tuyết Linh", "Mai Phương"):
@@ -59,7 +47,7 @@ def run_scenario_s6(keysize=1024, verbose=True):
     secret = "Mã khóa két sắt phòng tài vụ: 7-3-9-1. Đổi mã sau ngày 30/10."
     results = {}
 
-    # ---------- A. Chỉ ký ----------
+    # A. Chỉ ký
     say("\n--- A. CHỈ KÝ (không mã hóa) ---")
     sig = sign_message(secret, A["sign_priv"])
     eve_sees = secret
@@ -68,7 +56,7 @@ def run_scenario_s6(keysize=1024, verbose=True):
     say(f"    Mai Phương đọc được M; Mai Phương còn tự kiểm tra được chữ ký: {results['A_sig_ok']} (chữ ký công khai)")
     results["A_leaked"] = eve_sees == secret
 
-    # ---------- B. Ký rồi mã hóa ----------
+    # B. Ký rồi mã hóa
     say("\n--- B. KÝ RỒI MÃ HÓA (RSA-OAEP + SHA256-CTR + HMAC) ---")
     env = sm.seal(secret, "Thu Trang", A["sign_priv"], "Thu Thủy", trusted_key("Thu Thủy", "encryption"))
     say(f"    Mai Phương thấy phong bì: {_preview(env)}")
@@ -84,7 +72,7 @@ def run_scenario_s6(keysize=1024, verbose=True):
     say(f"    Thu Thủy mở bằng khóa riêng mã hóa của Thu Thủy -> '{got['message'].decode()}'")
     say(f"    Chữ ký xác định người gửi: {got['sender']} (thời điểm ký {got['meta']['time']})")
 
-    # ---------- C. Sửa bản mã ----------
+    # C. Sửa bản mã
     say("\n--- C. MAI PHƯƠNG SỬA 1 BYTE BẢN MÃ ---")
     import base64
     ct = bytearray(base64.b64decode(env["ct"]))
@@ -98,7 +86,7 @@ def run_scenario_s6(keysize=1024, verbose=True):
         results["C_tamper_blocked"] = True
         say(f"    Thu Thủy: {err.reason}")
 
-    # ---------- D. Mai Phương giả mạo thư nhân danh Thu Trang ----------
+    # D. Mai Phương giả mạo thư nhân danh Thu Trang
     say("\n--- D. MAI PHƯƠNG TỰ MÃ HÓA THƯ GIẢ NHÂN DANH THU TRANG ---")
     say("    Mã hóa chỉ cần khóa CÔNG KHAI của Thu Thủy -> ai cũng gửi được thư mã hóa cho Thu Thủy.")
     fake = sm.seal("Thu Trang: chuyển ngay 200 triệu vào TK 0123 của Mai Phương", "Thu Trang", people["Mai Phương"]["sign_priv"],
@@ -112,7 +100,7 @@ def run_scenario_s6(keysize=1024, verbose=True):
         say(f"    Thu Thủy giải mã được nhưng: {err.reason}")
     say("    => Chỉ mã hóa thì có BẢO MẬT nhưng KHÔNG có CHỨNG THỰC. Cần chữ ký.")
 
-    # ---------- E. Chuyển tiếp lén ----------
+    # E. Chuyển tiếp lén
     say("\n--- E. THU THỦY CHUYỂN TIẾP LÉN THƯ CỦA THU TRANG CHO TUYẾT LINH ---")
     inner = sm.decrypt_envelope(env, B["enc_priv"])                # Thu Thủy giải mã, giữ nguyên chữ ký Thu Trang
     fwd = sm.encrypt_for(inner, "Tuyết Linh", trusted_key("Tuyết Linh", "encryption"))
@@ -131,14 +119,14 @@ def run_scenario_s6(keysize=1024, verbose=True):
     say(f"    Ký rồi mã hóa NGÂY THƠ (không ghi người nhận): Tuyết Linh tin Thu Trang viết cho mình: "
         f"'{naive['message'].decode()}'")
 
-    # ---------- F. Sai mục đích khóa ----------
+    # F. Sai mục đích khóa
     say("\n--- F. DÙNG KHÓA KÝ CỦA THU TRANG ĐỂ MÃ HÓA ---")
     ok, why = verify_certificate(A["sign_cert"], ca.certificate, ca.crl, usage="encryption")
     results["F_usage_blocked"] = not ok
     say(f"    Kiểm tra chứng thư: {why}")
     say("    (Dùng chung khóa thì 'nhờ ký' = 'giải mã hộ' — xem attacks/confidentiality.py.)")
 
-    # ---------- Bảng tổng kết ----------
+    # Bảng tổng kết
     say("\n--- TỔNG KẾT: CƠ CHẾ NÀO ĐẢM BẢO TÍNH CHẤT NÀO ---")
     rows = [("Tính chất", "Chỉ ký", "Chỉ mã hóa", "Ký rồi mã hóa"),
             ("Bảo mật (Confidentiality)", "Không", "Có", "Có"),

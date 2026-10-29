@@ -1,10 +1,4 @@
-# Tệp: pki/crl.py
-# [Báo cáo 4.4 - Khóa bị lộ, thu hồi chứng thư]
-# Danh sách chứng thư bị thu hồi (CRL - Certificate Revocation List).
-#   - Mỗi mục ghi: số serial, THỜI ĐIỂM thu hồi, lý do.
-#   - Ghi thời điểm để phân biệt chữ ký TRƯỚC khi lộ khóa (vẫn có giá trị nếu có dấu thời gian)
-#     và chữ ký SAU khi lộ khóa (bị từ chối).
-#   - CA ký lên bản CRL công bố, để kẻ tấn công không xóa được mục thu hồi trên đường truyền.
+"""Danh sách chứng thư bị thu hồi (CRL)."""
 import json
 from datetime import datetime
 

@@ -1,4 +1,3 @@
-# Tệp: tests/test_rsa_math.py   [Báo cáo 5.4 - Bộ kiểm thử; 2.6 - Số học nền tảng]
 import os
 import sys
 import unittest

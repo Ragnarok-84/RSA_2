@@ -1,13 +1,4 @@
-# Tệp: core/padding.py
-# [Báo cáo 3.4 - Lược đồ đệm PKCS#1 v1.5 và PSS]
-# Các phép mã hóa khối (encoding) theo RFC 8017, đều dùng SHA-256:
-#   - EMSA-PKCS1-v1_5 (chữ ký, tất định)      mục 9.2
-#   - EMSA-PSS        (chữ ký, ngẫu nhiên hóa) mục 9.1  — có chứng minh an toàn chặt (Bellare-Rogaway 1996)
-#   - EME-OAEP        (mã hóa, ngẫu nhiên hóa) mục 7.1  — dùng cho tính bảo mật (bổ sung)
-#   - MGF1            (hàm sinh mặt nạ)         phụ lục B.2.1
-#
-# Vì sao cần đệm? RSA thô S = M^d có tính đồng cấu (S1*S2 là chữ ký của M1*M2) và tất định.
-# Đệm biến giá trị băm thành một khối có cấu trúc cố định chiếm gần hết N bit, phá các tính chất đó.
+"""Lược đồ đệm PKCS#1 v1.5, PSS và OAEP (RFC 8017)."""
 import secrets
 
 from core.sha256 import sha256_bytes
@@ -36,9 +27,7 @@ def mgf1(seed, length):
     return bytes(out[:length])
 
 
-# ------------------------------------------------------------------ #
 # EMSA-PKCS1-v1_5
-# ------------------------------------------------------------------ #
 def pkcs1_v15_encode(hash_bytes, em_len):
     """EM = 00 01 | FF..FF (>= 8 byte) | 00 | DigestInfo | H"""
     t = SHA256_DIGEST_INFO + hash_bytes
@@ -72,9 +61,7 @@ def parse_em_strict(em):
     return em[-HASH_LEN:].hex()
 
 
-# ------------------------------------------------------------------ #
 # EMSA-PSS
-# ------------------------------------------------------------------ #
 def pss_encode(m_hash, em_bits, salt=None, salt_len=HASH_LEN):
     """
     EMSA-PSS-ENCODE (RFC 8017 mục 9.1.1):
@@ -112,9 +99,7 @@ def pss_verify(m_hash, em, em_bits, salt_len=HASH_LEN):
     return compare_hashes(sha256_bytes(b"\x00" * 8 + m_hash + salt), h)
 
 
-# ------------------------------------------------------------------ #
 # EME-OAEP (bổ sung - tính bảo mật)
-# ------------------------------------------------------------------ #
 def oaep_max_length(k):
     """Số byte bản rõ tối đa trong một khối OAEP: k - 2*hLen - 2 (190 byte với khóa 2048 bit)."""
     return k - 2 * HASH_LEN - 2

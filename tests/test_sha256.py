@@ -1,5 +1,3 @@
-# Tệp: tests/test_sha256.py   [Báo cáo 5.4 - Bộ kiểm thử; 3.3 - SHA-256]
-# Chạy: python -m unittest tests.test_sha256      (hoặc python -m unittest discover -s tests)
 import hashlib
 import hmac as std_hmac          # thư viện chuẩn: CHỈ dùng để đối chiếu
 import os

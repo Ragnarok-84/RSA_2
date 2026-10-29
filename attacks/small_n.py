@@ -1,9 +1,4 @@
-"""
-attacks/small_n.py
-[Báo cáo 3.6 - Độ an toàn; 6.4 - Tấn công minh họa]
-Tấn công phân tích thừa số modulus N nhỏ (Small Modulus Factorization).
-Biết p, q -> tính lại phi(N) và d -> kẻ tấn công ký giả được MỌI văn bản của chủ khóa.
-"""
+"""Phân tích thừa số modulus N nhỏ."""
 import math
 import os
 import sys

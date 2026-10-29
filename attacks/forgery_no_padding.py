@@ -1,11 +1,4 @@
-"""
-attacks/forgery_no_padding.py
-[Báo cáo 3.6 - Độ an toàn; 6.4 - Tấn công minh họa]
-Giả mạo chữ ký khi KHÔNG có đệm (RSA sách giáo khoa S = M^d mod N).
-  1. Giả mạo nhân tính: (M1^d) * (M2^d) = (M1*M2)^d mod N
-     -> từ 2 chữ ký thật S1, S2, kẻ tấn công tạo được chữ ký S3 = S1*S2 cho M3 = M1*M2 mà không cần khóa riêng.
-  2. Giả mạo tồn tại: chọn S bất kỳ, tính M = S^e mod N -> (M, S) là cặp hợp lệ, không cần chữ ký thật nào.
-"""
+"""Giả mạo chữ ký RSA khi không có đệm."""
 import os
 import secrets
 import sys

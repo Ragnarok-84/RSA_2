@@ -30,9 +30,7 @@ MSG_ORIGINAL = "Hợp đồng số 2026/HD-001: Thu Trang đồng ý bán lô h�
 MSG_FORGED = "Lệnh chuyển khoản: Thu Trang chuyển 500.000.000 VND cho Mallory.".encode("utf-8")
 
 
-# --------------------------------------------------------------------------- #
 # Tiện ích thời gian và định dạng
-# --------------------------------------------------------------------------- #
 def utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0) -> datetime:
     return datetime(year, month, day, hour, minute, second, tzinfo=UTC)
 
@@ -52,9 +50,7 @@ def verdict(accepted: bool) -> str:
     return "HỢP LỆ" if accepted else "TỪ CHỐI"
 
 
-# --------------------------------------------------------------------------- #
 # X.509 và CRL
-# --------------------------------------------------------------------------- #
 def _name(common_name: str) -> x509.Name:
     return x509.Name([
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, ORGANIZATION),
@@ -140,9 +136,7 @@ def build_crl(
     return builder.sign(ca_key, hashes.SHA256())
 
 
-# --------------------------------------------------------------------------- #
 # Dấu thời gian
-# --------------------------------------------------------------------------- #
 @dataclass
 class TimestampToken:
     serial: int
@@ -184,9 +178,7 @@ def validate_token(token: TimestampToken, signature: bytes, ca_cert: x509.Certif
     return True, ""
 
 
-# --------------------------------------------------------------------------- #
 # Ký số
-# --------------------------------------------------------------------------- #
 @dataclass
 class SignedPackage:
     message: bytes
@@ -206,9 +198,7 @@ def sign(key, cert: x509.Certificate, message: bytes, claimed_time: datetime) ->
     return SignedPackage(message, claimed_time, signature, cert)
 
 
-# --------------------------------------------------------------------------- #
 # Xác minh
-# --------------------------------------------------------------------------- #
 class Mode(str, Enum):
     VERIFY_TIME = "VERIFY_TIME"
     CLAIMED = "CLAIMED"
@@ -282,9 +272,7 @@ def verify(
     )
 
 
-# --------------------------------------------------------------------------- #
 # Hạ tầng PKI mô phỏng
-# --------------------------------------------------------------------------- #
 @dataclass
 class PKI:
     ca_key: object
@@ -319,9 +307,7 @@ def build_pki(key_bits: int) -> PKI:
     return PKI(ca_key, ca_cert, TimestampAuthority(tsa_key, tsa_cert), subject_key, long_lived, short_lived)
 
 
-# --------------------------------------------------------------------------- #
 # Kịch bản
-# --------------------------------------------------------------------------- #
 @dataclass
 class TestCase:
     case_id: str
@@ -485,9 +471,7 @@ def scenario_s6(pki: PKI) -> Scenario:
     return Scenario("S6 - CHỨNG THƯ HẾT HẠN", timeline, cert, crl, cases, conclusions)
 
 
-# --------------------------------------------------------------------------- #
 # Báo cáo
-# --------------------------------------------------------------------------- #
 def print_inputs(pki: PKI, scenario: Scenario, full: bool) -> None:
     private = pki.subject_key.private_numbers()
     public = private.public_numbers
@@ -577,9 +561,7 @@ def run_scenario(pki: PKI, scenario: Scenario, full: bool, writer: Optional[csv.
     return all_match
 
 
-# --------------------------------------------------------------------------- #
 # Điểm vào
-# --------------------------------------------------------------------------- #
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Mô phỏng chữ ký điện tử RSA: kịch bản S5 và S6")
     parser.add_argument("--scenario", choices=["s5", "s6", "all"], default="all")

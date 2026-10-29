@@ -1,9 +1,4 @@
-# Tệp: core/rsa_mini.py   [Báo cáo 3.5 - Ví dụ tính tay]
-# BẢN THU NHỎ (tính tay) của hệ chữ ký RSA, dùng bộ số trên lớp: p=17, q=11, e=7, M=88.
-#   Phần 1: Sinh khóa, mã hóa / giải mã, ký / kiểm tra trực tiếp trên M (RSA sách giáo khoa)
-#   Phần 2: Ký trên GIÁ TRỊ BĂM: h = SHA256(M) mod N  (thu nhỏ của ký-trên-băm thực tế)
-#   Phần 3: TÍNH BẢO MẬT — Thu Trang ký rồi mã hóa gửi Thu Thủy (Thu Thủy: p=23, q=29, e=3)
-# Mỗi phép lũy thừa đều in các bước của thuật toán bình phương và nhân để đối chiếu tính tay.
+"""RSA thu nhỏ tính tay với p=17, q=11, e=7, M=88."""
 import os as _os
 import sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
@@ -86,7 +81,7 @@ def run_demo(verbose=True):
     say(f"  Kiểm tra: S^e mod N = {S}^{E} mod {N} = {mod_exp(S, E, N)} " + ("= M" if verify_ok else "≠ M"))
     say(f"  Với M bị sửa (M={M + 1}): " + ("chấp nhận" if verify_tampered else "BỊ TỪ CHỐI"))
 
-    # ---------------- Phần 2: ký trên giá trị băm ----------------
+    # Phần 2: ký trên giá trị băm
     doc = "Hop dong 01"
     h = tiny_hash(doc, N)
     say("\n" + "=" * 60)
@@ -103,7 +98,7 @@ def run_demo(verbose=True):
     say(f"  Tài liệu bị sửa thành 'Hop dong 02' (h = {tiny_hash('Hop dong 02', N)}) -> "
         + ("chấp nhận" if hash_tampered else "BỊ TỪ CHỐI"))
 
-    # ---------------- Phần 3: tính bảo mật ----------------
+    # Phần 3: tính bảo mật
     conf = run_confidentiality_demo(private_key, public_key, say)
 
     return {"N": N, "phi": phi, "d": d, "C": C, "M2": M2, "S": S,

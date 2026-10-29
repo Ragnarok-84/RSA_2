@@ -1,4 +1,3 @@
-# Tệp: tests/test_pki.py   [Báo cáo 5.4 - Bộ kiểm thử; 4.4 - CRL, dấu thời gian]
 import os
 import sys
 import unittest

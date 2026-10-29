@@ -1,13 +1,4 @@
-"""
-attacks/weak_keys.py
-[Báo cáo 3.6.2 - Sinh khóa yếu, modulus dùng chung; 6.4 - Tấn công minh họa]
-Ba tấn công vào KHÂU SINH KHÓA. Thuật toán ký không sai, nhưng khóa sinh kém thì N bị phân tích:
-  1. Fermat      : p, q quá gần nhau -> N = a^2 - b^2 với a ≈ sqrt(N), tìm được sau vài bước.
-  2. Chung thừa số: bộ sinh số ngẫu nhiên kém làm hai khóa có chung p -> gcd(N1, N2) = p
-                   (Lenstra và cộng sự; Heninger và cộng sự, 2012: hàng chục nghìn khóa thật trên Internet).
-  3. Dùng chung N : hai người cùng N, khác e. Ai biết (e, d) của mình đều phân tích được N
-                   -> tính ra khóa riêng của người kia.
-"""
+"""Tấn công vào khâu sinh khóa: Fermat, chung thừa số, dùng chung N."""
 import math
 import os
 import secrets
@@ -30,7 +21,7 @@ def next_prime(n):
     return n
 
 
-# 1. Phân tích Fermat ----------------------------------------------------
+# 1. Phân tích Fermat
 def fermat_factor(n, max_steps=100_000):
     """
     Tìm a >= sqrt(n) sao cho a^2 - n là số chính phương b^2 -> n = (a - b)(a + b).
@@ -77,7 +68,7 @@ def demo_fermat(keysize=1024, verbose=True):
     return broken, safe
 
 
-# 2. Hai khóa chung một thừa số nguyên tố --------------------------------
+# 2. Hai khóa chung một thừa số nguyên tố
 def find_shared_primes(moduli):
     """Tính gcd từng cặp modulus. :return: danh sách (i, j, p) với gcd(N_i, N_j) = p > 1"""
     found = []
@@ -119,7 +110,7 @@ def demo_shared_prime(keysize=1024, count=6, verbose=True):
     return broken, len(found) == 1
 
 
-# 3. Dùng chung modulus N ------------------------------------------------
+# 3. Dùng chung modulus N
 def factor_from_private_exponent(e, d, n):
     """
     Biết (e, d) của một khóa thì phân tích được N (thuật toán xác suất, RFC 8017 / Boneh 1999):

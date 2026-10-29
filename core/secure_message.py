@@ -1,35 +1,4 @@
-# Tệp: core/secure_message.py   [bổ sung - TÍNH BẢO MẬT, báo cáo mục bảo mật]
-# KẾT HỢP CHỮ KÝ SỐ + MÃ HÓA: "Ký rồi mã hóa" (Sign-then-Encrypt) theo mô hình mã hóa lai.
-#
-#   Người gửi (Thu Trang)                               Người nhận (Thu Thủy)
-#   ---------------------------------------------   ---------------------------------------------
-#   1. meta = {from, to, tên tệp, SHA256(M), time}
-#      S = Sign_dA(meta)            (chữ ký RSA)
-#   2. inner = meta || S || M
-#   3. K ngẫu nhiên 32 byte (khóa phiên)
-#      ct  = inner XOR KeyStream(K_enc, nonce)  ->   4. K = OAEP-Decrypt_dB(ek)       (chỉ Thu Thủy làm được)
-#      tag = HMAC(K_mac, nonce || ct)           ->   5. kiểm tra tag  (phát hiện sửa bản mã)
-#      ek  = OAEP-Encrypt_eB(K)                 ->   6. giải mã ct -> inner -> kiểm tra meta.to == Thu Thủy
-#                                                     7. Verify_eA(meta, S), SHA256(M) == meta.sha256
-#
-# Đạt được cả 4 tính chất:
-#   BẢO MẬT     : chỉ người giữ dB mới lấy được K -> đọc được M (kẻ nghe lén chỉ thấy bản mã).
-#   TOÀN VẸN    : HMAC trên bản mã + băm SHA-256 của M nằm trong phần được ký.
-#   CHỨNG THỰC  : chữ ký RSA của Thu Trang (khóa công khai lấy từ chứng thư CA).
-#   CHỐNG CHỐI BỎ: Thu Thủy giữ (meta, S) làm bằng chứng; chỉ Thu Trang có dA để tạo S.
-#
-# Vì sao "ký rồi mã hóa" mà không "mã hóa rồi ký"?
-#   - Mã hóa rồi ký: chữ ký nằm ngoài, Mai Phương gỡ chữ ký của Thu Trang và ký lại bằng khóa của Mai Phương
-#     -> Thu Thủy tưởng thông điệp của Mai Phương. Đồng thời trọng tài không xem được nội dung đã ký.
-#   - Ký song song với mã hóa (Enc(M) || Sign(M)): chữ ký lộ SHA256(M) -> Mai Phương đoán M từ tập nhỏ.
-#   - Ký rồi mã hóa NGÂY THƠ (không ghi tên người nhận vào phần ký): Thu Thủy giải mã rồi mã hóa lại
-#     gửi cho Tuyết Linh, Tuyết Linh tưởng Thu Trang viết cho mình (surreptitious forwarding, Davis 2001)
-#     -> phải đưa trường "to" vào phần được ký như bước 1.
-#
-# Phần mã hóa đối xứng: dòng khóa sinh bằng SHA-256 ở chế độ đếm (giống CTR mode):
-#   block_i = SHA256(K_enc || nonce || i)  ;  ct = pt XOR (block_0 || block_1 || ...)
-# kết hợp HMAC-SHA256 theo kiểu Encrypt-then-MAC. (Hệ thống thực tế dùng AES-GCM; ở đây tự
-# cài bằng SHA-256 để không phụ thuộc thư viện và vì đề tài tập trung vào RSA.)
+"""Ký rồi mã hóa theo mô hình mã hóa lai."""
 import base64
 import json
 import secrets
@@ -57,9 +26,7 @@ class SecureMessageError(Exception):
         self.reason = reason
 
 
-# ------------------------------------------------------------------ #
 # Mã hóa đối xứng: SHA-256-CTR + HMAC-SHA256
-# ------------------------------------------------------------------ #
 def derive_keys(session_key):
     """Tách khóa phiên thành 2 khóa độc lập: một để mã hóa, một để tính MAC."""
     k_enc = bytes.fromhex(generate_hmac(session_key, b"encryption"))
@@ -82,9 +49,7 @@ def _canonical(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-# ------------------------------------------------------------------ #
 # Bước KÝ: tạo phần "inner" đã ký
-# ------------------------------------------------------------------ #
 def build_signed_inner(message, sender, sender_private_key, recipient=None, filename=None):
     """
     Tạo inner = len(meta) || meta || len(S) || S || M.
@@ -140,9 +105,7 @@ def verify_signed_inner(inner, me, get_sender_public_key):
             "bound_to_recipient": "to" in meta}
 
 
-# ------------------------------------------------------------------ #
 # Bước MÃ HÓA: bọc inner cho người nhận
-# ------------------------------------------------------------------ #
 def encrypt_for(inner, recipient, recipient_public_key):
     """Mã hóa lai: khóa phiên K bọc bằng RSA-OAEP, dữ liệu mã bằng SHA-256-CTR + HMAC."""
     session_key = secrets.token_bytes(KEY_LEN)
@@ -176,9 +139,7 @@ def decrypt_envelope(envelope, my_private_key):
     return keystream_xor(k_enc, nonce, ct)
 
 
-# ------------------------------------------------------------------ #
 # API cấp cao
-# ------------------------------------------------------------------ #
 def seal(message, sender, sender_private_key, recipient, recipient_public_key, filename=None):
     """Ký rồi mã hóa. Trả về phong bì (dict, lưu được thành JSON)."""
     inner = build_signed_inner(message, sender, sender_private_key, recipient, filename)

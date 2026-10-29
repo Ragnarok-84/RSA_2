@@ -1,23 +1,11 @@
-# Tệp: core/rsa_math.py
-# [Báo cáo 2.6 - Số học nền tảng; 3.2 - Sinh khóa]
-# Các thuật toán số học của RSA (tự cài đặt, không dùng thư viện mật mã):
-#   - Euclid / Euclid mở rộng, nghịch đảo modulo
-#   - Lũy thừa modulo bằng thuật toán "bình phương và nhân" (có thể in từng bước)
-#   - Kiểm tra số nguyên tố Miller-Rabin, sinh số nguyên tố
-#   - Sinh cặp khóa RSA
-#   - So sánh thời gian hằng, chuyển đổi số nguyên <-> byte (I2OSP/OS2IP), căn bậc ba nguyên
-#
-# Nguồn ngẫu nhiên: module chuẩn `secrets` (CSPRNG của hệ điều hành), KHÔNG dùng `random`
-# vì `random` (Mersenne Twister) đoán trước được -> lộ p, q.
+"""Số học RSA: Euclid, bình phương và nhân, Miller-Rabin, sinh khóa."""
 import secrets
 
 DEFAULT_E = 65537
 MIN_SECURE_BITS = 2048          # NIST SP 800-57: RSA 2048 bit ~ 112 bit an toàn
 
 
-# ------------------------------------------------------------------ #
 # Euclid, nghịch đảo modulo
-# ------------------------------------------------------------------ #
 def gcd(a, b):
     """Ước chung lớn nhất (thuật toán Euclid)."""
     while b:
@@ -65,9 +53,7 @@ def mod_inverse(e, phi):
     return x % phi
 
 
-# ------------------------------------------------------------------ #
 # Bình phương và nhân
-# ------------------------------------------------------------------ #
 def mod_exp(base, exp, mod, trace=None):
     """
     Lũy thừa modulo base^exp mod mod bằng thuật toán bình phương và nhân
@@ -89,9 +75,7 @@ def mod_exp(base, exp, mod, trace=None):
     return result
 
 
-# ------------------------------------------------------------------ #
 # Miller-Rabin, sinh số nguyên tố
-# ------------------------------------------------------------------ #
 SMALL_PRIMES = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71)
 
 
@@ -141,9 +125,7 @@ def generate_prime(bits):
             return p
 
 
-# ------------------------------------------------------------------ #
 # Sinh khóa RSA
-# ------------------------------------------------------------------ #
 def generate_keypair(p=None, q=None, e=None, keysize=None):
     """
     Sinh cặp khóa RSA: N = p*q, phi = (p-1)(q-1), e*d ≡ 1 (mod phi).
@@ -205,9 +187,7 @@ def explain_keygen(p, q, e):
     return lines
 
 
-# ------------------------------------------------------------------ #
 # Tiện ích
-# ------------------------------------------------------------------ #
 def compare_hashes(hash_A, hash_B):
     """
     So sánh hai bản băm (hoặc hai chuỗi byte) để kiểm tra toàn vẹn và xác thực.
@@ -260,7 +240,6 @@ def integer_cuberoot_ceil(x):
     return r
 
 
-# --- Chạy thử ---
 if __name__ == "__main__":
     print("=== Ví dụ tính tay: p=17, q=11, e=7 ===")
     for line in explain_keygen(17, 11, 7):

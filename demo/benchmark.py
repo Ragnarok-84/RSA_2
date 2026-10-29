@@ -1,7 +1,4 @@
-# Tệp: demo/benchmark.py   [Báo cáo 6.3 - Đo thời gian]
-# Đo thời gian chạy theo kích thước khóa và kích thước dữ liệu.
-#   python demo/benchmark.py          -> nhanh (khóa 512/1024, dữ liệu tới 64 KB)
-#   python demo/benchmark.py --real   -> khóa tới 3072 bit, dữ liệu tới 256 KB
+"""Đo thời gian theo kích thước khóa và dữ liệu."""
 import os
 import sys
 import time

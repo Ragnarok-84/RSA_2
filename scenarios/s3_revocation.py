@@ -1,15 +1,4 @@
-"""
-scenarios/s3_revocation.py
-[Báo cáo 4.4, 4.7, 6.5]
-Kịch bản S3: Khóa bị lộ, thu hồi chứng thư (CRL) và vai trò của dấu thời gian (TSA).
-  Phần A — Thu hồi: Thu Thủy mất khóa -> CA thu hồi -> chữ ký mới bằng khóa đó bị từ chối dù "đúng toán học".
-  Phần B — Khóa bị lộ + TSA: chữ ký TRƯỚC thời điểm thu hồi vẫn có giá trị, chữ ký SAU thì không;
-           Mai Phương sửa ngày trong dấu thời gian cũng bị phát hiện.
-  Phần C — Chứng thư hết hạn: chữ ký có dấu thời gian lúc chứng thư còn hạn vẫn có giá trị.
-  Phần D — Ký lùi ngày: không có TSA thì thời điểm ký chỉ là lời khai của người ký -> Mai Phương khai lùi ngày
-           để lọt vào lúc chứng thư còn hiệu lực; có TSA thì bị chặn.
-  Phần E — Giới hạn của PKI: chữ ký Mai Phương tạo trong khoảng từ lúc LỘ khóa đến lúc THU HỒI vẫn được chấp nhận.
-"""
+"""Kịch bản S3: khóa bị lộ, thu hồi chứng thư và dấu thời gian."""
 import os
 import sys
 from datetime import datetime, timedelta

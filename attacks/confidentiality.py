@@ -1,11 +1,4 @@
-"""
-attacks/confidentiality.py
-[Bổ sung - TÍNH BẢO MẬT] Tấn công vào mã hóa RSA và cách kết hợp chữ ký với mã hóa:
-  1. Tấn công từ điển vào RSA sách giáo khoa (mã hóa tất định)          -> OAEP chặn
-  2. Rò rỉ khi "ký song song mã hóa": Enc(M) || Sign(M)                 -> ký rồi mã hóa chặn
-  3. Håstad broadcast (e = 3, cùng bản rõ gửi 3 người)                  -> OAEP chặn
-  4. Dùng CHUNG một cặp khóa cho ký và giải mã: "nhờ ký" = giải mã hộ   -> tách khóa (key_usage)
-"""
+"""Tấn công vào tính bảo mật: từ điển, ký song song mã hóa, Håstad, dùng chung khóa."""
 import os
 import sys
 
@@ -20,7 +13,7 @@ def _say(verbose):
     return print if verbose else (lambda *a, **k: None)
 
 
-# 1. Tấn công từ điển ------------------------------------------------
+# 1. Tấn công từ điển
 def attack_textbook_dictionary(public_key, ciphertext, candidates):
     """Mã hóa thử từng ứng viên bằng khóa CÔNG KHAI, so sánh với bản mã. :return: bản rõ hoặc None"""
     for cand in candidates:
@@ -54,7 +47,7 @@ def demo_dictionary(keysize=1024, verbose=True):
     return found_text == secret, found_oaep is None
 
 
-# 2. Ký song song mã hóa ---------------------------------------------
+# 2. Ký song song mã hóa
 def attack_encrypt_and_sign_leak(signature, sender_public_key, candidates):
     """Chữ ký gửi kèm ở dạng rõ: ai cũng kiểm tra được chữ ký với từng ứng viên -> đoán ra M."""
     for cand in candidates:
@@ -78,7 +71,7 @@ def demo_encrypt_and_sign_leak(keysize=1024, verbose=True):
     return found == secret
 
 
-# 3. Håstad broadcast ------------------------------------------------
+# 3. Håstad broadcast
 def attack_hastad_broadcast(ciphertexts, moduli):
     """Ghép 3 bản mã bằng định lý số dư Trung Hoa -> M^3 (không mod) -> lấy căn bậc ba."""
     N = 1
@@ -109,7 +102,7 @@ def demo_hastad(keysize=1024, verbose=True):
     return text == secret, rec2 is None
 
 
-# 4. Dùng chung khóa ký và giải mã -----------------------------------
+# 4. Dùng chung khóa ký và giải mã
 def demo_same_key_sign_decrypt(keysize=512, verbose=True):
     """
     Thu Trang dùng MỘT cặp khóa vừa để nhận thư mật vừa để ký (dịch vụ ký RSA thô).

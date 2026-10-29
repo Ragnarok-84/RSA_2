@@ -1,4 +1,3 @@
-# Tệp: tests/test_attacks.py   [bổ sung - Báo cáo 3.6, 6.4: tấn công minh họa phải tái hiện được]
 import os
 import sys
 import unittest

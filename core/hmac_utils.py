@@ -1,7 +1,3 @@
-#Tệp: core/hmac_utils.py  [bổ sung: HMAC dùng cho đối chiếu S2 và mã hóa lai]
-
-# Import các hàm đã được định nghĩa từ các tệp trước đó
-# (các tệp nằm trong package core/)
 import os as _os
 import sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
@@ -19,7 +15,6 @@ def generate_hmac(key, message):
     """
     block_size = 64  # Kích thước khối của thuật toán SHA-256 là 64 byte (512 bit)
     
-    # Chuyển đổi key và message sang dạng bytes nếu đầu vào là chuỗi
     if isinstance(key, str):
         key = key.encode('utf-8')
     if isinstance(message, str):
@@ -28,7 +23,6 @@ def generate_hmac(key, message):
     # Bước 1: Xử lý độ dài của Khóa (Key)
     if len(key) > block_size:
         # Nếu khóa dài hơn block_size, băm khóa để nén lại
-        # hash_sha256 trả về chuỗi hex, nên cần chuyển ngược lại thành bytes
         key = bytes.fromhex(hash_sha256(key))
         
     if len(key) < block_size:
@@ -58,10 +52,8 @@ def verify_hmac(key, message, received_hmac):
     :param received_hmac: Mã HMAC đính kèm theo thông điệp để kiểm tra
     :return: True nếu HMAC hợp lệ (thông điệp không bị giả mạo), False nếu ngược lại
     """
-    # Tự động tính toán lại HMAC từ thông điệp và khóa đang có
     calculated_hmac = generate_hmac(key, message)
     
-    # So sánh HMAC vừa tính với HMAC nhận được (sử dụng hàm có sẵn từ math_utils)
     return compare_hashes(calculated_hmac, received_hmac)
 
 def pbkdf2_hmac_sha256(password, salt, iterations, dklen=32):
@@ -84,22 +76,18 @@ def pbkdf2_hmac_sha256(password, salt, iterations, dklen=32):
         block += 1
     return out[:dklen]
 
-# --- Chạy thử ---
 if __name__ == "__main__":
     secret_key = "KhoaBiMat_ATBMTT_2026"
     msg = "Giao dich chuyen khoan 1000 VNĐ"
     
-    # 1. Người gửi tạo HMAC
     hmac_result = generate_hmac(secret_key, msg)
     print("Thông điệp gốc:", msg)
     print("Mã HMAC-SHA256 sinh ra:", hmac_result)
     
-    # 2. Người nhận xác thực HMAC
     print("\n--- Tiến hành xác thực ---")
     is_valid = verify_hmac(secret_key, msg, hmac_result)
     print("Xác thực thông điệp nguyên vẹn:", "Thành công" if is_valid else "Thất bại")
     
-    # 3. Giả lập kẻ gian thay đổi thông điệp
     fake_msg = "Giao dich chuyen khoan 9999 VNĐ"
     is_valid_fake = verify_hmac(secret_key, fake_msg, hmac_result)
     print("\nXác thực thông điệp bị sửa đổi:", "Thành công" if is_valid_fake else "Thất bại (Phát hiện giả mạo)")

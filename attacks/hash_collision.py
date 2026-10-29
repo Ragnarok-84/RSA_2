@@ -1,12 +1,4 @@
-"""
-attacks/hash_collision.py
-[Báo cáo 2.5, 3.6.2 - Va chạm hàm băm, nghịch lý ngày sinh (tấn công Yuval 1979); 6.4]
-Chữ ký ký trên H(M), nên H(M1) = H(M2) thì chữ ký của M1 cũng là chữ ký của M2.
-Mai Phương soạn một hợp đồng THẬT và một hợp đồng GIAN, mỗi bản có nhiều biến thể trông giống hệt nhau
-(1 hay 2 dấu cách giữa các từ). Với hàm băm k bit, nghịch lý ngày sinh cho va chạm sau ~2^(k/2)
-biến thể mỗi bên, thay vì 2^k. Mai Phương đưa bản thật cho Thu Trang ký, rồi dùng chữ ký đó cho bản gian.
-Mô phỏng hàm băm yếu bằng cách cắt SHA-256 còn k bit; với SHA-256 đủ 256 bit cần ~2^128 phép băm.
-"""
+"""Va chạm hàm băm theo nghịch lý ngày sinh."""
 import os
 import sys
 import time

@@ -1,4 +1,3 @@
-# Tệp: tests/test_scenarios.py   [bổ sung - Báo cáo 4.7, 6.5: mọi kịch bản phải cho kết quả đúng kỳ vọng]
 import glob
 import os
 import re
@@ -55,9 +54,9 @@ class TestScenarios(unittest.TestCase):
         import contextlib
         import io
         sys.path.insert(0, os.path.join(ROOT, "tests"))
-        import doi_chieu_x509
+        import cross_check_x509
         with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(doi_chieu_x509.main(["--bits", str(KEYSIZE if REAL else 1024)]), 0)
+            self.assertEqual(cross_check_x509.main(["--bits", str(KEYSIZE if REAL else 1024)]), 0)
 
 
 class TestNoForbiddenLibraries(unittest.TestCase):

@@ -1,12 +1,4 @@
-"""
-attacks/bleichenbacher_e3.py
-[Báo cáo 3.6 - Độ an toàn; 6.4 - Tấn công minh họa]
-Tấn công kiểu Bleichenbacher 2006 với e = 3 vào bộ kiểm tra đệm PKCS#1 v1.5 LỎNG LẺO.
-
-Bộ kiểm tra lỏng chỉ đọc 00 01 FF.. 00 DigestInfo H rồi bỏ qua phần còn lại. Kẻ tấn công dựng
-khối 00 01 FF 00 DigestInfo H || rác, lấy căn bậc ba nguyên s. Vì s^3 < N nên s^3 mod N = s^3:
-phần đầu giữ nguyên, chỉ phần "rác" thay đổi -> chữ ký giả được chấp nhận mà không cần khóa riêng.
-"""
+"""Tấn công kiểu Bleichenbacher (e = 3) vào bộ kiểm tra đệm PKCS#1 v1.5 lỏng lẻo."""
 import os
 import sys
 

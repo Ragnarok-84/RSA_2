@@ -1,10 +1,4 @@
-"""
-scenarios/run_all.py
-[Báo cáo 4.7 - Tổng hợp tính chất; 6.5 - Kết quả các kịch bản]
-Chạy lần lượt mọi kịch bản và in bảng tổng kết.
-    python scenarios/run_all.py            (khóa 1024 bit)
-    python scenarios/run_all.py --real     (khóa 2048 bit)
-"""
+"""Chạy các kịch bản S1-S6 và in bảng tổng kết."""
 import os
 import sys
 import time

@@ -1,9 +1,4 @@
-"""
-scenarios/s2_nonrepudiation.py
-[Báo cáo 4.3, 4.7, 6.5]
-Kịch bản S2: Chống chối bỏ giao dịch (Non-Repudiation) = chữ ký số + chứng thư CA + dấu thời gian TSA.
-Đối chiếu: HMAC (khóa bí mật dùng chung) KHÔNG chống chối bỏ được vì cả hai bên đều tạo được thẻ.
-"""
+"""Kịch bản S2: chống chối bỏ."""
 import os
 import sys
 
@@ -53,7 +48,7 @@ def run_scenario_s2(keysize=1024, verbose=True):
     token = tsa.issue(signature)
     say(f"[3] TSA đóng dấu thời gian lên chữ ký: {token['time']}")
 
-    # --- Tranh chấp: Thu Trang chối ---
+    # Tranh chấp: Thu Trang chối
     say("\n[4] Tranh chấp - Thu Trang chối: 'Tôi chưa từng ký giao dịch này!'. Trọng tài kiểm tra:")
     cert_ok, msg = verify_certificate(alice_cert, ca.certificate, ca.crl)
     sig_ok = verify_message(transaction, signature, tuple(alice_cert["public_key"]))
@@ -63,13 +58,13 @@ def run_scenario_s2(keysize=1024, verbose=True):
     say(f"    - Dấu thời gian TSA hợp lệ                        : {ts_ok}")
     repudiation_blocked = cert_ok and sig_ok and ts_ok
 
-    # --- Thu Thủy thử sửa số tiền ---
+    # Thu Thủy thử sửa số tiền
     forged_tx = "Thu Trang chuyển 900.000.000 VNĐ cho Thu Thủy"
     bob_forge_ok = verify_message(forged_tx, signature, tuple(alice_cert["public_key"]))
     say(f"\n[5] Thu Thủy sửa số tiền thành 900 triệu rồi dùng lại chữ ký: "
         f"{'được chấp nhận' if bob_forge_ok else 'BỊ TỪ CHỐI (Thu Thủy không có khóa riêng của Thu Trang)'}")
 
-    # --- Sửa thời điểm trong dấu thời gian ---
+    # Sửa thời điểm trong dấu thời gian
     bad_token = dict(token, time="2020-01-01 00:00:00")
     ts_forge_ok = tsa.verify(bad_token, signature)
     say(f"[6] Sửa thời điểm trong dấu thời gian: "

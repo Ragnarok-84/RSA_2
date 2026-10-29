@@ -1,4 +1,3 @@
-# Tệp: tests/test_rsa_full.py   [Báo cáo 5.4 - Bộ kiểm thử; 3.2 - Sinh khóa, ký, kiểm tra; 3.5 - Tính tay]
 import os
 import sys
 import unittest

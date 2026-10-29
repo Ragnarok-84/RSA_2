@@ -1,10 +1,4 @@
-"""
-attacks/run_all.py
-[Báo cáo 3.6.2, 6.4 - Tấn công minh họa]
-Chạy mọi tấn công, mỗi tấn công hai lần: trên cấu hình YẾU (phải phá được) và trên cấu hình ĐÚNG
-của hệ thống (phải bị chặn). In bảng tổng kết để đưa vào báo cáo.
-    python attacks/run_all.py
-"""
+"""Chạy toàn bộ tấn công minh họa và in bảng tổng kết."""
 import os
 import sys
 import time

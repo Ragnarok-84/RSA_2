@@ -1,9 +1,4 @@
-# Tệp: tests/doi_chieu.py   [Báo cáo 5.4 - Bộ kiểm thử, đối chiếu chuẩn]
-# ĐỐI CHIẾU kết quả cài đặt của nhóm với test vector chuẩn (NIST, RFC) và thư viện chuẩn.
-# Thư viện có sẵn (hashlib, hmac, cryptography) CHỈ được dùng ở tệp này để so sánh kết quả,
-# không dùng trong phần lõi.
-#
-#   python tests/doi_chieu.py
+"""Đối chiếu với test vector NIST/RFC và thư viện chuẩn."""
 import hashlib
 import hmac as std_hmac
 import os
@@ -33,7 +28,7 @@ def skip(group, name, reason):
 def run(keysize=1024):
     ROWS.clear()
 
-    # ---- SHA-256: FIPS 180-4 / NIST CSRC example values ----
+    # SHA-256: FIPS 180-4 / NIST CSRC example values
     vectors = [
         ("", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
         ("abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
@@ -48,7 +43,7 @@ def run(keysize=1024):
         data = os.urandom(n)
         check("SHA-256 vs hashlib", f"ngẫu nhiên {n} byte", hash_sha256(data), hashlib.sha256(data).hexdigest())
 
-    # ---- HMAC-SHA256: RFC 4231 ----
+    # HMAC-SHA256: RFC 4231
     check("HMAC (RFC 4231)", "Test case 1", generate_hmac(b"\x0b" * 20, b"Hi There"),
           "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7")
     check("HMAC (RFC 4231)", "Test case 2", generate_hmac("Jefe", "what do ya want for nothing?"),
@@ -62,7 +57,7 @@ def run(keysize=1024):
     check("PBKDF2 vs hashlib", "2000 vòng", pbkdf2_hmac_sha256("matkhau", b"salt1234", 2000).hex(),
           hashlib.pbkdf2_hmac("sha256", b"matkhau", b"salt1234", 2000).hex())
 
-    # ---- Số học RSA ----
+    # Số học RSA
     check("Số học", "Miller-Rabin: 2^127-1 nguyên tố", is_prime(2 ** 127 - 1), True)
     check("Số học", "Miller-Rabin: 561 (Carmichael)", is_prime(561), False)
     check("Số học", "mod_exp vs pow (số 1024 bit)", mod_exp(3 ** 600, 2 ** 1000 + 1, 2 ** 1024 - 105),
@@ -72,7 +67,7 @@ def run(keysize=1024):
     check("RSA thu nhỏ (ví dụ trên lớp)", "Ký rồi mã hóa: (C1, C2) -> M", (r["conf_C1"], r["conf_C2"], r["conf_M"]),
           (465, 664, 88))
 
-    # ---- RSA chữ ký & OAEP vs thư viện cryptography ----
+    # RSA chữ ký & OAEP vs thư viện cryptography
     try:
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import padding
