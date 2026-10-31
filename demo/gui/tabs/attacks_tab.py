@@ -36,7 +36,7 @@ class AttacksTab(QWidget):
         for header, scenario_mods, attack_mods in GROUPS:
             self._add_header(header)
             for mod in scenario_mods:
-                self._add_item(f"  Đúng: {scenario_titles[mod]}", ("scenario", mod), "Kịch bản: kỳ vọng HỢP LỆ")
+                self._add_item(f"  Kịch bản: {scenario_titles[mod]}", ("scenario", mod), "Kịch bản: kỳ vọng HỢP LỆ")
             for mod in attack_mods:
                 self._add_item(f"  Tấn công: {attack_titles[mod]}", ("attack", mod), attacks.load(mod).__doc__ or "")
         self.list.itemDoubleClicked.connect(lambda _i: self.run_selected())

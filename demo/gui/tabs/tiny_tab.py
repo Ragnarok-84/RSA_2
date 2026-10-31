@@ -106,7 +106,7 @@ class TinyTab(QWidget):
         self.y = spin(0)
         for field in (self.p, self.q, self.e, self.p_b, self.q_b, self.e_b, self.x_num, self.y):
             field.setFixedWidth(68)
-        self.message = QLineEdit("Thu Trang xinh đẹp")
+        self.message = QLineEdit("Thu Trang")
         self.use_msg = QRadioButton("Có băm: x =")
         self.use_raw = QRadioButton("Không băm (VD): x =")
         self.use_raw.setChecked(True)
